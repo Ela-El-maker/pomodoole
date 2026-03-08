@@ -1,0 +1,52 @@
+name: Flutter CI
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+    env:
+      COVERAGE_MIN: "30"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Codegen verification
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze (fail on warnings)
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Unit and widget tests
+        run: flutter test --coverage
+
+      - name: Enforce coverage threshold
+        run: |
+          if [ ! -f coverage/lcov.info ]; then
+            echo "coverage/lcov.info not found"
+            exit 1
+          fi
+          coverage=$(awk -F: '/^LF:/{lf+=$2} /^LH:/{lh+=$2} END {if (lf>0) printf "%.2f", (lh/lf)*100; else print "0.00"}' coverage/lcov.info)
+          echo "Coverage: ${coverage}% (minimum ${COVERAGE_MIN}%)"
+          awk -v cov="$coverage" -v min="$COVERAGE_MIN" 'BEGIN {exit(cov+0 >= min+0 ? 0 : 1)}'
+
+      - name: Integration smoke
+        run: |
+          if flutter devices | grep -qE "(android|ios)"; then
+            flutter test integration_test
+          else
+            echo "No mobile device available in CI runner; skipping device integration smoke."
+          fi
