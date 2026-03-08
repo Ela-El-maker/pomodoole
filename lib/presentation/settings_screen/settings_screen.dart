@@ -1,23 +1,28 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
 import '../../services/app_state_service.dart';
 import '../../services/haptic_service.dart';
+import '../../app/router/route_paths.dart';
+import '../../state/session/session_providers.dart';
 import './widgets/audio_preferences_section_widget.dart';
 import './widgets/settings_section_header_widget.dart';
 import './widgets/timer_duration_section_widget.dart';
 import './widgets/vibration_settings_section_widget.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   // Timer durations
   int _workDuration = 25;
   int _shortBreakDuration = 5;
@@ -99,6 +104,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (value is bool) await prefs.setBool(key, value);
     if (value is double) await prefs.setDouble(key, value);
     if (value is String) await prefs.setString(key, value);
+
+    ref
+        .read(sessionControllerProvider.notifier)
+        .updateDurations(
+          workDurationMinutes: _workDuration,
+          shortBreakDurationMinutes: _shortBreakDuration,
+          longBreakDurationMinutes: _longBreakDuration,
+        );
+
     _showSavedFeedback();
   }
 
@@ -432,10 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         title: const Text('Settings'),
         leading: IconButton(
-          onPressed: () => Navigator.of(
-            context,
-            rootNavigator: true,
-          ).pushNamed('/timer-screen'),
+          onPressed: () => context.go(AppRoutes.timer),
           icon: CustomIconWidget(
             iconName: 'arrow_back',
             color:
@@ -522,9 +533,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               'Sound Mixer, create custom ambient atmospheres',
                           button: true,
                           child: GestureDetector(
-                            onTap: () => Navigator.of(
-                              context,
-                            ).pushNamed('/custom-sound-mixer-screen'),
+                            onTap: () =>
+                                context.push(AppRoutes.customSoundMixer),
                             child: Container(
                               padding: EdgeInsets.symmetric(
                                 horizontal: 4.w,
@@ -724,6 +734,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         SizedBox(height: 4.h),
+
+                        if (kDebugMode) ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  context.push(RoutePaths.debugDiagnostics),
+                              icon: const Icon(Icons.bug_report_outlined),
+                              label: const Text('Open Debug Diagnostics'),
+                            ),
+                          ),
+                          SizedBox(height: 2.h),
+                        ],
 
                         SizedBox(
                           width: double.infinity,
