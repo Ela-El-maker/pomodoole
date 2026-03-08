@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
@@ -57,15 +60,11 @@ class _OnboardingSetupFlowScreenState extends State<OnboardingSetupFlowScreen>
     if (_currentStep < 3) {
       await _slideController.reverse();
       setState(() => _currentStep++);
-      _slideController.forward();
+      unawaited(_slideController.forward());
     } else {
       await _savePreferences();
       if (mounted) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.timer,
-          (route) => false,
-        );
+        context.go(AppRoutes.timer);
       }
     }
   }
@@ -74,14 +73,14 @@ class _OnboardingSetupFlowScreenState extends State<OnboardingSetupFlowScreen>
     if (_currentStep > 0) {
       await _slideController.reverse();
       setState(() => _currentStep--);
-      _slideController.forward();
+      unawaited(_slideController.forward());
     }
   }
 
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('focus_duration', _selectedFocusDuration);
-    await prefs.setInt('break_duration', _selectedBreakDuration);
+    await prefs.setInt('work_duration', _selectedFocusDuration);
+    await prefs.setInt('short_break_duration', _selectedBreakDuration);
     await prefs.setString('atmosphere', _selectedAtmosphere);
     await prefs.setBool('onboarding_complete', true);
   }

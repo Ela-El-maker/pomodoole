@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../routes/app_routes.dart';
@@ -40,7 +41,7 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
   }
 
   void _onGetStarted() {
-    Navigator.pushNamed(context, AppRoutes.onboardingSetupFlow);
+    context.push(AppRoutes.onboardingSetupFlow);
   }
 
   @override
@@ -50,20 +51,27 @@ class _OnboardingWelcomeScreenState extends State<OnboardingWelcomeScreen>
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6.w),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 4.h),
-                const BotanicalIllustrationWidget(),
-                SizedBox(height: 5.h),
-                const WelcomeTextWidget(),
-                SizedBox(height: 6.h),
-                GetStartedButtonWidget(onPressed: _onGetStarted),
-                SizedBox(height: 4.h),
-              ],
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 6.w),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: 4.h),
+                      const BotanicalIllustrationWidget(),
+                      SizedBox(height: 5.h),
+                      const WelcomeTextWidget(),
+                      SizedBox(height: 6.h),
+                      GetStartedButtonWidget(onPressed: _onGetStarted),
+                      SizedBox(height: 4.h),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

@@ -88,7 +88,6 @@ class _BotanicalIllustrationWidgetState
       const Color(0xFFC8E0C0),
     ];
     return List.generate(6, (i) {
-      final angle = (i * 60.0) * (3.14159 / 180);
       return Positioned(
         left:
             55.w / 2 +
