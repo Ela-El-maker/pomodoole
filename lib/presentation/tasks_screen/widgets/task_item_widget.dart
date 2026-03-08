@@ -26,7 +26,6 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
   late AnimationController _checkController;
   late Animation<double> _checkScale;
   double _dragOffset = 0.0;
-  bool _isDragging = false;
 
   static const Color _accentRed = Color(0xFFE76F6F);
   static const Color _sageGreen = Color(0xFFA8C3A0);
@@ -74,7 +73,6 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
     final remaining = (estimated - completed).clamp(0, estimated);
 
     return GestureDetector(
-      onHorizontalDragStart: (_) => setState(() => _isDragging = true),
       onHorizontalDragUpdate: (d) {
         setState(
           () => _dragOffset = (_dragOffset + d.delta.dx).clamp(-80.0, 80.0),
@@ -89,7 +87,6 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
         }
         setState(() {
           _dragOffset = 0.0;
-          _isDragging = false;
         });
       },
       child: Stack(

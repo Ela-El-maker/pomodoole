@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_icon_widget.dart';
 import './widgets/add_task_bottom_sheet_widget.dart';
 import './widgets/task_card_widget.dart';
 import './widgets/task_empty_state_widget.dart';
@@ -240,10 +240,7 @@ class _TaskManagementScreenState extends State<TaskManagementScreen> {
                 title: const Text('Assign to Session'),
                 onTap: () {
                   Navigator.pop(context);
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).pushNamed('/timer-screen');
+                  context.go(AppRoutes.timer);
                 },
               ),
               SizedBox(height: 1.h),
