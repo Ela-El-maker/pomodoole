@@ -1,4 +1,4 @@
-package com.example.pomodorofocus
+package io.petalfocus.app
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
