@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
-import '../../../widgets/custom_icon_widget.dart';
 
 class EmptyStateWidget extends StatelessWidget {
   const EmptyStateWidget({super.key});
@@ -40,10 +40,7 @@ class EmptyStateWidget extends StatelessWidget {
             SizedBox(height: 3.h),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(
-                  context,
-                  rootNavigator: true,
-                ).pushNamed('/timer-screen');
+                context.go(AppRoutes.timer);
               },
               child: const Text('Start a Session'),
             ),

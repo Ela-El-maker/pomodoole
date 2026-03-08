@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../core/app_export.dart';
-import '../../widgets/custom_bottom_bar.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/achievement_badges_widget.dart';
 import './widgets/bar_chart_widget.dart';
@@ -21,9 +20,7 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   int _selectedSegment = 0;
-  bool _isLoading = false;
   final bool _hasData = true;
-  int _currentNavIndex = 2;
 
   final List<Map<String, dynamic>> _dailySessions = [
     {"day": "Mon", "sessions": 4, "focusMinutes": 100},
@@ -83,9 +80,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   ];
 
   Future<void> _onRefresh() async {
-    setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 800));
-    setState(() => _isLoading = false);
   }
 
   List<Map<String, dynamic>> get _currentData {
@@ -107,19 +102,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         return "month";
       default:
         return "day";
-    }
-  }
-
-  void _onNavTap(int index) {
-    setState(() => _currentNavIndex = index);
-    final routes = [
-      '/timer-screen',
-      '/task-management-screen',
-      '/statistics-screen',
-      '/settings-screen',
-    ];
-    if (index != 2) {
-      Navigator.of(context, rootNavigator: true).pushNamed(routes[index]);
     }
   }
 
@@ -210,13 +192,6 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                   ),
                 )
               : EmptyStateWidget(),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 0),
-        child: CustomBottomBar(
-          currentIndex: _currentNavIndex,
-          onTap: _onNavTap,
         ),
       ),
     );

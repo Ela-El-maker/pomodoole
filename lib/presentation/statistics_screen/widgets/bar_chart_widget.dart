@@ -46,8 +46,9 @@ class _BarChartWidgetState extends State<BarChartWidget> {
             maxY: maxY,
             barTouchData: BarTouchData(
               touchTooltipData: BarTouchTooltipData(
-                tooltipBgColor:
-                    theme.colorScheme.primary.withValues(alpha: 0.9),
+                tooltipBgColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.9,
+                ),
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
                     '${widget.data[groupIndex][widget.xAxisKey]}\n${rod.toY.toInt()} sessions',

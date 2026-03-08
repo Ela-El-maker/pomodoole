@@ -6,7 +6,11 @@ class LineChartWidget extends StatefulWidget {
   final List<Map<String, dynamic>> data;
   final String xAxisKey;
 
-  const LineChartWidget({super.key, required this.data, required this.xAxisKey});
+  const LineChartWidget({
+    super.key,
+    required this.data,
+    required this.xAxisKey,
+  });
 
   @override
   State<LineChartWidget> createState() => _LineChartWidgetState();
@@ -45,8 +49,9 @@ class _LineChartWidgetState extends State<LineChartWidget> {
             maxY: maxY,
             lineTouchData: LineTouchData(
               touchTooltipData: LineTouchTooltipData(
-                tooltipBgColor:
-                    theme.colorScheme.primary.withValues(alpha: 0.9),
+                tooltipBgColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.9,
+                ),
                 getTooltipItems: (touchedSpots) {
                   return touchedSpots.map((spot) {
                     final index = spot.x.toInt();
