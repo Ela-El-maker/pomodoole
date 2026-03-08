@@ -132,7 +132,7 @@ class TimerService {
 
   void start() {
     if (_isRunning) return;
-    if (!kIsWeb) HapticFeedback.mediumImpact();
+    if (!kIsWeb && _vibrationEnabled) HapticFeedback.mediumImpact();
     _isRunning = true;
     _isPaused = false;
     _timer = Timer.periodic(const Duration(seconds: 1), _onTick);
@@ -148,7 +148,7 @@ class TimerService {
 
   void pause() {
     if (!_isRunning) return;
-    if (!kIsWeb) HapticFeedback.lightImpact();
+    if (!kIsWeb && _vibrationEnabled) HapticFeedback.lightImpact();
     _timer?.cancel();
     _isRunning = false;
     _isPaused = true;
@@ -169,7 +169,7 @@ class TimerService {
   }
 
   void stop() {
-    if (!kIsWeb) HapticFeedback.heavyImpact();
+    if (!kIsWeb && _vibrationEnabled) HapticFeedback.heavyImpact();
     _timer?.cancel();
     _isRunning = false;
     _isPaused = false;
@@ -201,7 +201,7 @@ class TimerService {
 
   void _onSessionComplete() {
     _timer?.cancel();
-    if (!kIsWeb) HapticFeedback.vibrate();
+    if (!kIsWeb && _vibrationEnabled) HapticFeedback.vibrate();
     _isRunning = false;
     _isPaused = false;
 
@@ -268,7 +268,9 @@ class TimerService {
     if (milestones.contains(_currentStreak) &&
         !kIsWeb &&
         _notificationsEnabled) {
-      NotificationService().showStreakMilestoneNotification(_currentStreak);
+      unawaited(
+        NotificationService().showStreakMilestoneNotification(_currentStreak),
+      );
     }
   }
 
@@ -289,7 +291,7 @@ class TimerService {
         formattedTime: formattedTime,
         sessionLabel: sessionLabel,
         isRunning: _isRunning,
-        sessionType: _sessionType,
+        sessionType: _sessionType.name,
       );
     }
     _saveState();

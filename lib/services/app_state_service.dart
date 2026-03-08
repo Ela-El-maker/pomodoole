@@ -46,9 +46,14 @@ class AppStateService extends ChangeNotifier {
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     _highContrastMode = prefs.getBool('high_contrast_mode') ?? false;
-    _hapticIntensity =
-        HapticIntensity.values[prefs.getInt('haptic_intensity') ??
-            HapticIntensity.medium.index];
+    final storedHapticIntensity = prefs.getInt('haptic_intensity');
+    if (storedHapticIntensity != null &&
+        storedHapticIntensity >= 0 &&
+        storedHapticIntensity < HapticIntensity.values.length) {
+      _hapticIntensity = HapticIntensity.values[storedHapticIntensity];
+    } else {
+      _hapticIntensity = HapticIntensity.medium;
+    }
     _hapticOnSessionStart = prefs.getBool('haptic_on_session_start') ?? true;
     _hapticOnSessionComplete =
         prefs.getBool('haptic_on_session_complete') ?? true;

@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
-
-import './timer_service.dart';
+import 'package:home_widget/home_widget.dart';
 
 class HomeWidgetService {
   static final HomeWidgetService _instance = HomeWidgetService._internal();
@@ -12,6 +11,7 @@ class HomeWidgetService {
   Future<void> initialize() async {
     if (kIsWeb) return;
     try {
+      await HomeWidget.setAppGroupId('group.io.petalfocus.app');
       _initialized = true;
     } catch (e) {
       // Silently fail
@@ -22,11 +22,16 @@ class HomeWidgetService {
     required String formattedTime,
     required String sessionLabel,
     required bool isRunning,
-    required SessionType sessionType,
+    required String sessionType,
   }) async {
     if (kIsWeb || !_initialized) return;
-    // Widget data is saved to SharedPreferences by TimerService._saveState()
-    // The Android PetalFocusWidget reads from SharedPreferences directly
-    // home_widget package updates are handled natively
+    await HomeWidget.saveWidgetData<String>('widget_time', formattedTime);
+    await HomeWidget.saveWidgetData<String>('widget_session', sessionLabel);
+    await HomeWidget.saveWidgetData<bool>('widget_running', isRunning);
+    await HomeWidget.saveWidgetData<String>('widget_type', sessionType);
+    await HomeWidget.updateWidget(
+      androidName: 'PetalFocusWidget',
+      iOSName: 'PetalFocusWidget',
+    );
   }
 }
