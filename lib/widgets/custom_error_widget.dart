@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/svg.dart';
 
 import '../core/app_export.dart';
@@ -57,7 +58,7 @@ class CustomErrorWidget extends StatelessWidget {
                     if (canBeBack) {
                       Navigator.of(context).pop();
                     } else {
-                      Navigator.pushNamed(context, AppRoutes.initial);
+                      context.go(AppRoutes.onboardingWelcome);
                     }
                   },
                   icon: const Icon(
