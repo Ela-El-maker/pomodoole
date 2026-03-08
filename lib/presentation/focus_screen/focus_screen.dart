@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 import '../../routes/app_routes.dart';
@@ -67,10 +68,10 @@ class _FocusScreenState extends State<FocusScreen>
       }
     });
     // Navigate to active focus mode
-    Navigator.of(context, rootNavigator: true)
-        .pushNamed(
+    context
+        .push(
           AppRoutes.activeFocusMode,
-          arguments: {
+          extra: {
             'task': _activeTask,
             'remainingSeconds': _remainingSeconds,
             'totalSeconds': _focusDuration,
@@ -255,10 +256,7 @@ class _FocusScreenState extends State<FocusScreen>
           ),
           GestureDetector(
             onTap: () {
-              Navigator.of(
-                context,
-                rootNavigator: true,
-              ).pushNamed(AppRoutes.taskManagement);
+              context.push(AppRoutes.taskManagement);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

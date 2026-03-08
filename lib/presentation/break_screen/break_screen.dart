@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
@@ -11,7 +12,16 @@ import './widgets/break_suggestions_widget.dart';
 import './widgets/break_timer_widget.dart';
 
 class BreakScreen extends StatefulWidget {
-  const BreakScreen({super.key});
+  const BreakScreen({
+    super.key,
+    this.isLongBreak,
+    this.completedSessions,
+    this.totalSessions,
+  });
+
+  final bool? isLongBreak;
+  final int? completedSessions;
+  final int? totalSessions;
 
   @override
   State<BreakScreen> createState() => _BreakScreenState();
@@ -28,7 +38,6 @@ class _BreakScreenState extends State<BreakScreen>
   int _totalSessions = 4;
   late int _totalSeconds;
   late int _remainingSeconds;
-  bool _isRunning = true;
 
   @override
   void initState() {
@@ -47,6 +56,10 @@ class _BreakScreenState extends State<BreakScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _isLongBreak = widget.isLongBreak ?? _isLongBreak;
+    _completedSessions = widget.completedSessions ?? _completedSessions;
+    _totalSessions = widget.totalSessions ?? _totalSessions;
+
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
       _isLongBreak = args['isLongBreak'] as bool? ?? false;
@@ -70,7 +83,6 @@ class _BreakScreenState extends State<BreakScreen>
           _remainingSeconds--;
         } else {
           timer.cancel();
-          _isRunning = false;
           _onBreakComplete();
         }
       });
@@ -80,14 +92,14 @@ class _BreakScreenState extends State<BreakScreen>
   void _onBreakComplete() {
     HapticFeedback.mediumImpact();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.focusScreen);
+    context.go(AppRoutes.timer);
   }
 
   void _skipBreak() {
     _timer?.cancel();
     HapticFeedback.lightImpact();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.focusScreen);
+    context.go(AppRoutes.timer);
   }
 
   @override

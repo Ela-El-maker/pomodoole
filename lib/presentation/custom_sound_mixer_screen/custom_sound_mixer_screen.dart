@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:sizer/sizer.dart';
 import './widgets/sound_card_widget.dart';
 import './widgets/saved_mix_card_widget.dart';
@@ -30,14 +32,15 @@ class SoundMix {
   );
 }
 
-class CustomSoundMixerScreen extends StatefulWidget {
+class CustomSoundMixerScreen extends ConsumerStatefulWidget {
   const CustomSoundMixerScreen({super.key});
 
   @override
-  State<CustomSoundMixerScreen> createState() => _CustomSoundMixerScreenState();
+  ConsumerState<CustomSoundMixerScreen> createState() =>
+      _CustomSoundMixerScreenState();
 }
 
-class _CustomSoundMixerScreenState extends State<CustomSoundMixerScreen>
+class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
     with TickerProviderStateMixin {
   static const List<Map<String, dynamic>> _soundSources = [
     {'name': 'Rain', 'icon': Icons.water_drop_rounded, 'key': 'rain'},
@@ -86,39 +89,55 @@ class _CustomSoundMixerScreenState extends State<CustomSoundMixerScreen>
   }
 
   Future<void> _loadData() async {
-    final prefs = await SharedPreferences.getInstance();
-    final mixesJson = prefs.getString('saved_sound_mixes');
-    final activeMixId = prefs.getString('active_mix_id');
-    if (mixesJson != null) {
-      final List decoded = jsonDecode(mixesJson) as List;
-      setState(() {
-        _savedMixes = decoded
-            .map((e) => SoundMix.fromJson(e as Map<String, dynamic>))
-            .toList();
-        _activeMixId = activeMixId;
-      });
-      if (activeMixId != null) {
-        final activeMix = _savedMixes
-            .where((m) => m.id == activeMixId)
-            .firstOrNull;
-        if (activeMix != null) {
-          setState(() {
-            for (final key in activeMix.soundLevels.keys) {
-              _volumes[key] = activeMix.soundLevels[key]!;
-              _activeStates[key] = activeMix.soundLevels[key]! > 0;
-            }
-          });
-        }
+    final repository = ref.read(soundMixRepositoryProvider);
+    await repository.migrateFromPreferencesIfNeeded();
+    final mixes = await repository.fetchAll();
+
+    setState(() {
+      _savedMixes = mixes
+          .map(
+            (mix) => SoundMix(
+              id: mix.id,
+              name: mix.name,
+              soundLevels: Map<String, double>.from(
+                (jsonDecode(mix.levelsJson) as Map).map(
+                  (key, value) =>
+                      MapEntry(key as String, (value as num).toDouble()),
+                ),
+              ),
+            ),
+          )
+          .toList();
+      _activeMixId = mixes.where((mix) => mix.isActive).firstOrNull?.id;
+    });
+
+    if (_activeMixId != null) {
+      final activeMix = _savedMixes
+          .where((m) => m.id == _activeMixId)
+          .firstOrNull;
+      if (activeMix != null) {
+        setState(() {
+          for (final key in activeMix.soundLevels.keys) {
+            _volumes[key] = activeMix.soundLevels[key]!;
+            _activeStates[key] = activeMix.soundLevels[key]! > 0;
+          }
+        });
       }
     }
   }
 
   Future<void> _saveMixes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = jsonEncode(_savedMixes.map((m) => m.toJson()).toList());
-    await prefs.setString('saved_sound_mixes', encoded);
+    final repository = ref.read(soundMixRepositoryProvider);
+    for (final mix in _savedMixes) {
+      await repository.upsert(
+        id: mix.id,
+        name: mix.name,
+        levels: mix.soundLevels,
+        isActive: mix.id == _activeMixId,
+      );
+    }
     if (_activeMixId != null) {
-      await prefs.setString('active_mix_id', _activeMixId!);
+      await repository.setActive(_activeMixId!);
     }
   }
 
@@ -281,6 +300,7 @@ class _CustomSoundMixerScreenState extends State<CustomSoundMixerScreen>
       _savedMixes.removeWhere((m) => m.id == mixId);
       if (_activeMixId == mixId) _activeMixId = null;
     });
+    unawaited(ref.read(soundMixRepositoryProvider).delete(mixId));
     _saveMixes();
   }
 
