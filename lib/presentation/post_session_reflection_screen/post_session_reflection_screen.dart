@@ -1,22 +1,25 @@
-import 'dart:convert';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:sizer/sizer.dart';
 import './widgets/mood_chip_widget.dart';
 import './widgets/reflection_prompt_widget.dart';
 import '../../routes/app_routes.dart';
 
-class PostSessionReflectionScreen extends StatefulWidget {
+class PostSessionReflectionScreen extends ConsumerStatefulWidget {
   const PostSessionReflectionScreen({super.key});
 
   @override
-  State<PostSessionReflectionScreen> createState() =>
+  ConsumerState<PostSessionReflectionScreen> createState() =>
       _PostSessionReflectionScreenState();
 }
 
 class _PostSessionReflectionScreenState
-    extends State<PostSessionReflectionScreen>
+    extends ConsumerState<PostSessionReflectionScreen>
     with TickerProviderStateMixin {
   static const List<Map<String, String>> _moods = [
     {'emoji': '🙂', 'label': 'Focused'},
@@ -86,39 +89,32 @@ class _PostSessionReflectionScreenState
   }
 
   Future<void> _saveReflection() async {
-    final prefs = await SharedPreferences.getInstance();
-    final reflection = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'timestamp': DateTime.now().toIso8601String(),
-      'mood': _selectedMood,
-      'wentWell': _wentWellController.text,
-      'distracted': _distractedController.text,
-      'nextFocus': _nextFocusController.text,
-      'freeNotes': _freeNotesController.text,
-      'state': 'saved',
-    };
-
-    final existing = prefs.getString('reflections_list');
-    final List<dynamic> reflections = existing != null
-        ? jsonDecode(existing) as List
-        : [];
-    reflections.add(reflection);
-    await prefs.setString('reflections_list', jsonEncode(reflections));
+    await ref
+        .read(reflectionsRepositoryProvider)
+        .addReflection(
+          mood: _selectedMood,
+          wentWell: _wentWellController.text,
+          distractedBy: _distractedController.text,
+          nextFocus: _nextFocusController.text,
+          notes: _freeNotesController.text,
+        );
 
     // Show save overlay
     setState(() => _showSaveOverlay = true);
-    _saveOverlayController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 600), () {
-        if (mounted) {
+    unawaited(
+      _saveOverlayController.forward().then((_) async {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        if (!mounted) return;
+        unawaited(
           _saveOverlayController.reverse().then((_) {
             if (mounted) {
               setState(() => _showSaveOverlay = false);
               _navigateAway();
             }
-          });
-        }
-      });
-    });
+          }),
+        );
+      }),
+    );
   }
 
   void _skipReflection() async {
@@ -347,7 +343,7 @@ class _PostSessionReflectionScreenState
 
   void _navigateAway() {
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.focusScreen);
+    context.go(AppRoutes.timer);
   }
 
   @override

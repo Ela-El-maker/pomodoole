@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sizer/sizer.dart';
 
@@ -11,7 +12,14 @@ import './widgets/completion_message_widget.dart';
 import './widgets/session_dots_widget.dart';
 
 class SessionCompletionScreen extends StatefulWidget {
-  const SessionCompletionScreen({super.key});
+  const SessionCompletionScreen({
+    super.key,
+    this.completedSessions,
+    this.totalSessions,
+  });
+
+  final int? completedSessions;
+  final int? totalSessions;
 
   @override
   State<SessionCompletionScreen> createState() =>
@@ -52,6 +60,9 @@ class _SessionCompletionScreenState extends State<SessionCompletionScreen>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _completedSessions = widget.completedSessions ?? _completedSessions;
+    _totalSessions = widget.totalSessions ?? _totalSessions;
+
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic>) {
       _completedSessions = args['completedSessions'] as int? ?? 2;
@@ -78,10 +89,9 @@ class _SessionCompletionScreenState extends State<SessionCompletionScreen>
   void _navigateToBreak() {
     _autoAdvanceTimer?.cancel();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(
-      context,
+    context.go(
       AppRoutes.breakScreen,
-      arguments: {
+      extra: {
         'isLongBreak': _completedSessions >= _totalSessions,
         'completedSessions': _completedSessions,
         'totalSessions': _totalSessions,
@@ -92,7 +102,7 @@ class _SessionCompletionScreenState extends State<SessionCompletionScreen>
   void _skipBreak() {
     _autoAdvanceTimer?.cancel();
     if (!mounted) return;
-    Navigator.pushReplacementNamed(context, AppRoutes.focusScreen);
+    context.go(AppRoutes.timer);
   }
 
   @override
