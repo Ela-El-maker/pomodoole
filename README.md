@@ -6,9 +6,6 @@
 ![GitHub contributors](https://img.shields.io/github/contributors/Ela-El-maker/pomodoole)
 ![GitHub issues](https://img.shields.io/github/issues/Ela-El-maker/pomodoole)
 
-<p align="center">
-	<img src="assets/images/app_icon.png" alt="Petal Focus" width="120" />
-</p>
 
 ## Project Overview
 
