@@ -6,7 +6,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
-        android:label="pomodorofocus"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -30,7 +30,7 @@
 
         <!-- Home Widget Provider -->
         <receiver
-            android:name="com.example.pomodorofocus.PetalFocusWidget"
+            android:name="io.petalfocus.app.PetalFocusWidget"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

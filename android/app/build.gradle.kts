@@ -1,12 +1,22 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
+    id("com.google.gms.google-services") apply false
+    id("com.google.firebase.firebase-perf") apply false
+    id("com.google.firebase.crashlytics") apply false
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val hasGoogleServices = file("google-services.json").exists()
+if (hasGoogleServices) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.firebase-perf")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
 android {
-    namespace = "com.example.pomodorofocus"
+    namespace = "io.petalfocus.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +32,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.pomodorofocus"
+        applicationId = "io.petalfocus.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
