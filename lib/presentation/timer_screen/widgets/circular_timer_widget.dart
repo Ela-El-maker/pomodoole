@@ -46,12 +46,19 @@ class CircularTimerWidget extends StatelessWidget {
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                formattedTime,
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                  fontSize: math.min(12.w, 48.0),
+              SizedBox(
+                width: size * 0.72,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    formattedTime,
+                    maxLines: 1,
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurface,
+                      fontSize: math.min(12.w, 48.0),
+                    ),
+                  ),
                 ),
               ),
               SizedBox(height: 0.5.h),
@@ -63,6 +70,8 @@ class CircularTimerWidget extends StatelessWidget {
                 ),
                 child: Text(
                   sessionLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelLarge?.copyWith(
                     color: sessionColor,
                     fontWeight: FontWeight.w600,
