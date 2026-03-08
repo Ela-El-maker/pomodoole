@@ -1,6 +1,30 @@
 # Petal Focus
 
-Flutter mobile app for focus sessions, breaks, tasks, and session insights.
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/Ela-El-maker/pomodoole/ci.yml?branch=main)
+![GitHub License](https://img.shields.io/github/license/Ela-El-maker/pomodoole)
+![GitHub last commit](https://img.shields.io/github/last-commit/Ela-El-maker/pomodoole)
+![GitHub contributors](https://img.shields.io/github/contributors/Ela-El-maker/pomodoole)
+![GitHub issues](https://img.shields.io/github/issues/Ela-El-maker/pomodoole)
+
+<p align="center">
+	<img src="assets/images/app_icon.png" alt="Petal Focus" width="120" />
+</p>
+
+## Project Overview
+
+**Petal Focus** is a modern, distraction-free productivity app designed to help you maximize your focus and manage your work sessions effectively. Inspired by the Pomodoro Technique, Petal Focus lets you break your work into focused intervals, track your progress, and reflect on your productivity.
+
+### Key Features
+
+- **Focus Sessions & Breaks:** Start, pause, and complete focus sessions with customizable durations. Take short or long breaks to recharge.
+- **Task Management:** Organize your tasks, set estimates, and track completed Pomodoros for each task.
+- **Session Insights:** Visualize your productivity with statistics and charts. Review your session history and identify trends.
+- **Reflections:** After each session, reflect on what went well and what you can improve next time.
+- **Custom Sound Mixer:** Personalize your focus environment with ambient sound mixes.
+- **Notifications & Haptics:** Stay on track with reminders, notifications, and gentle haptic feedback.
+- **Cross-Platform:** Runs on both Android and iOS, with a consistent, beautiful UI.
+
+Petal Focus is built for anyone who wants to work with intention, reduce distractions, and build better habits—whether you're a student, professional, or creative.
 
 ## Architecture
 
@@ -81,3 +105,7 @@ Key folders:
 - `lib/theme`: app theming
 - `lib/widgets`: shared widgets
 - `assets/`: image and static assets
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
