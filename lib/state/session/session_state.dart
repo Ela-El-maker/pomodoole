@@ -56,8 +56,10 @@ class SessionState {
     required this.completedSessions,
     required this.currentStreak,
     required this.currentTask,
+    required this.currentTaskId,
     required this.notificationsEnabled,
     required this.vibrationEnabled,
+    this.lastTickEpochMs,
     this.interruptedSnapshot,
   });
 
@@ -75,6 +77,7 @@ class SessionState {
       completedSessions: 0,
       currentStreak: 0,
       currentTask: '',
+      currentTaskId: null,
       notificationsEnabled: true,
       vibrationEnabled: true,
     );
@@ -91,8 +94,10 @@ class SessionState {
   final int completedSessions;
   final int currentStreak;
   final String currentTask;
+  final String? currentTaskId;
   final bool notificationsEnabled;
   final bool vibrationEnabled;
+  final int? lastTickEpochMs;
   final InterruptedSessionSnapshot? interruptedSnapshot;
 
   bool get isRunning =>
@@ -136,8 +141,10 @@ class SessionState {
     int? completedSessions,
     int? currentStreak,
     String? currentTask,
+    Object? currentTaskId = _sentinel,
     bool? notificationsEnabled,
     bool? vibrationEnabled,
+    Object? lastTickEpochMs = _sentinel,
     Object? interruptedSnapshot = _sentinel,
   }) {
     return SessionState(
@@ -154,8 +161,14 @@ class SessionState {
       completedSessions: completedSessions ?? this.completedSessions,
       currentStreak: currentStreak ?? this.currentStreak,
       currentTask: currentTask ?? this.currentTask,
+      currentTaskId: currentTaskId == _sentinel
+          ? this.currentTaskId
+          : currentTaskId as String?,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
+      lastTickEpochMs: lastTickEpochMs == _sentinel
+          ? this.lastTickEpochMs
+          : lastTickEpochMs as int?,
       interruptedSnapshot: interruptedSnapshot == _sentinel
           ? this.interruptedSnapshot
           : interruptedSnapshot as InterruptedSessionSnapshot?,

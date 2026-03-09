@@ -35,5 +35,8 @@ final sessionControllerProvider =
         homeWidgetService: ref.watch(homeWidgetServiceProvider),
         hapticService: ref.watch(hapticServiceProvider),
         sessionHistoryRepository: ref.watch(sessionHistoryRepositoryProvider),
+        tasksRepository: ref.watch(tasksRepositoryProvider),
+        logger: ref.watch(appLoggerProvider),
+        focusAudioDelegate: ref.watch(mixerControllerProvider),
       );
     });
