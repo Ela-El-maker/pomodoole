@@ -22,6 +22,8 @@ class StatsSummary {
     required this.totalFocusMinutes,
     required this.weeklyCompletedSessions,
     required this.weeklyGoalSessions,
+    required this.canEditWeeklyGoal,
+    required this.weeklyGoalLockMessage,
     required this.completedTasks,
     required this.onTimeTasks,
   });
@@ -31,8 +33,46 @@ class StatsSummary {
   final int totalFocusMinutes;
   final int weeklyCompletedSessions;
   final int weeklyGoalSessions;
+  final bool canEditWeeklyGoal;
+  final String? weeklyGoalLockMessage;
   final int completedTasks;
   final int onTimeTasks;
+}
+
+class MoodBreakdownItem {
+  const MoodBreakdownItem({
+    required this.mood,
+    required this.count,
+    required this.percentage,
+  });
+
+  final String mood;
+  final int count;
+  final double percentage;
+}
+
+class ReflectionSummary {
+  const ReflectionSummary({
+    required this.weeklyReflectionCount,
+    required this.moodBreakdown,
+  });
+
+  final int weeklyReflectionCount;
+  final List<MoodBreakdownItem> moodBreakdown;
+}
+
+class WeeklyGoalSetupState {
+  const WeeklyGoalSetupState({
+    required this.weeklyGoalSessions,
+    required this.initialized,
+    required this.canEdit,
+    required this.lockMessage,
+  });
+
+  final int weeklyGoalSessions;
+  final bool initialized;
+  final bool canEdit;
+  final String? lockMessage;
 }
 
 class TimeBucketStat {

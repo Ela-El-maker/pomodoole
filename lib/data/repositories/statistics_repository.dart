@@ -9,13 +9,84 @@ class StatisticsRepository {
   final SharedPreferences _preferences;
 
   static const _weeklyGoalKey = 'weekly_goal_sessions';
+  static const _weeklyGoalWeekStartKey = 'weekly_goal_week_start_epoch_ms';
+  static const _weeklyGoalInitializedKey = 'weekly_goal_initialized';
   static const int _defaultWeeklyGoalSessions = 40;
 
   int get weeklyGoalSessions =>
       _preferences.getInt(_weeklyGoalKey) ?? _defaultWeeklyGoalSessions;
 
   Future<void> setWeeklyGoalSessions(int sessions) async {
+    final now = DateTime.now();
     await _preferences.setInt(_weeklyGoalKey, sessions.clamp(1, 200));
+    await _preferences.setInt(
+      _weeklyGoalWeekStartKey,
+      _startOfWeek(now).millisecondsSinceEpoch,
+    );
+    await _preferences.setBool(_weeklyGoalInitializedKey, true);
+  }
+
+  Future<WeeklyGoalSetupState> getWeeklyGoalSetupState() async {
+    final summary = await getSummary();
+    final initialized =
+        _preferences.getBool(_weeklyGoalInitializedKey) ?? false;
+    final canEdit = !initialized || summary.canEditWeeklyGoal;
+    return WeeklyGoalSetupState(
+      weeklyGoalSessions: summary.weeklyGoalSessions,
+      initialized: initialized,
+      canEdit: canEdit,
+      lockMessage: canEdit
+          ? null
+          : (summary.weeklyGoalLockMessage ??
+                'Goal can be edited after reaching it or when this week ends.'),
+    );
+  }
+
+  Future<ReflectionSummary> getWeeklyReflectionSummary(
+    DateTime nowLocal,
+  ) async {
+    final reflections = await _database.getAllReflections();
+    final startOfWeek = _startOfWeek(nowLocal);
+    final weeklyReflections = reflections.where((reflection) {
+      final localTime = reflection.createdAt.toLocal();
+      return !localTime.isBefore(startOfWeek) && !localTime.isAfter(nowLocal);
+    }).toList();
+
+    final total = weeklyReflections.length;
+    if (total == 0) {
+      return const ReflectionSummary(
+        weeklyReflectionCount: 0,
+        moodBreakdown: [],
+      );
+    }
+
+    final byMood = <String, int>{};
+    for (final reflection in weeklyReflections) {
+      final rawMood = reflection.mood?.trim() ?? '';
+      final mood = rawMood.isEmpty ? 'Unspecified' : rawMood;
+      byMood[mood] = (byMood[mood] ?? 0) + 1;
+    }
+
+    final breakdown =
+        byMood.entries
+            .map(
+              (entry) => MoodBreakdownItem(
+                mood: entry.key,
+                count: entry.value,
+                percentage: entry.value / total,
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final countCompare = b.count.compareTo(a.count);
+            if (countCompare != 0) return countCompare;
+            return a.mood.compareTo(b.mood);
+          });
+
+    return ReflectionSummary(
+      weeklyReflectionCount: total,
+      moodBreakdown: breakdown,
+    );
   }
 
   Future<StatsSummary> getSummary() async {
@@ -42,13 +113,22 @@ class StatisticsRepository {
               !session.createdAt.toLocal().isAfter(now),
         )
         .length;
+    final goalSessions = weeklyGoalSessions;
+    final goalAchieved = weeklyCompletedSessions >= goalSessions;
+    final editUnlockedByWeek = _isWeekAfterGoalLock(now);
+    final canEditWeeklyGoal = goalAchieved || editUnlockedByWeek;
+    final weeklyGoalLockMessage = canEditWeeklyGoal
+        ? null
+        : 'Goal can be edited after reaching it or when this week ends.';
 
     return StatsSummary(
       todaySessions: todaySessions,
       currentStreak: currentStreak,
       totalFocusMinutes: totalFocusMinutes,
       weeklyCompletedSessions: weeklyCompletedSessions,
-      weeklyGoalSessions: weeklyGoalSessions,
+      weeklyGoalSessions: goalSessions,
+      canEditWeeklyGoal: canEditWeeklyGoal,
+      weeklyGoalLockMessage: weeklyGoalLockMessage,
       completedTasks: completedTasks,
       onTimeTasks: onTimeTasks,
     );
@@ -189,6 +269,22 @@ class StatisticsRepository {
   DateTime _startOfWeek(DateTime date) {
     final day = DateTime(date.year, date.month, date.day);
     return day.subtract(Duration(days: day.weekday - DateTime.monday));
+  }
+
+  bool _isWeekAfterGoalLock(DateTime now) {
+    final lockEpoch = _preferences.getInt(_weeklyGoalWeekStartKey);
+    if (lockEpoch == null) {
+      return true;
+    }
+    final lockedWeekStart = DateTime.fromMillisecondsSinceEpoch(lockEpoch);
+    final currentWeekStart = _startOfWeek(now);
+    return currentWeekStart.isAfter(
+      DateTime(
+        lockedWeekStart.year,
+        lockedWeekStart.month,
+        lockedWeekStart.day,
+      ),
+    );
   }
 
   int _weekOfYear(DateTime date) {

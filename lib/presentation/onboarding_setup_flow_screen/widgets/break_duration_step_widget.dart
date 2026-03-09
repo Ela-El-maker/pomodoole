@@ -21,10 +21,13 @@ class BreakDurationStepWidget extends StatefulWidget {
 class _BreakDurationStepWidgetState extends State<BreakDurationStepWidget> {
   bool _showCustomInput = false;
   final _customController = TextEditingController();
+  final _customFocusNode = FocusNode();
+  String? _customError;
 
   @override
   void dispose() {
     _customController.dispose();
+    _customFocusNode.dispose();
     super.dispose();
   }
 
@@ -34,7 +37,7 @@ class _BreakDurationStepWidgetState extends State<BreakDurationStepWidget> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Step 2 of 4',
+          'Step 2 of 5',
           style: GoogleFonts.dmSans(
             fontSize: 10.sp,
             fontWeight: FontWeight.w400,
@@ -80,7 +83,11 @@ class _BreakDurationStepWidgetState extends State<BreakDurationStepWidget> {
     final isSelected = widget.selectedDuration == duration && !_showCustomInput;
     return GestureDetector(
       onTap: () {
-        setState(() => _showCustomInput = false);
+        FocusScope.of(context).unfocus();
+        setState(() {
+          _showCustomInput = false;
+          _customError = null;
+        });
         widget.onDurationSelected(duration);
       },
       child: AnimatedContainer(
@@ -178,7 +185,21 @@ class _BreakDurationStepWidgetState extends State<BreakDurationStepWidget> {
 
   Widget _buildCustomCard() {
     return GestureDetector(
-      onTap: () => setState(() => _showCustomInput = true),
+      onTap: () {
+        setState(() {
+          _showCustomInput = true;
+          _customError = null;
+          _customController.text = widget.selectedDuration.toString();
+          _customController.selection = TextSelection.collapsed(
+            offset: _customController.text.length,
+          );
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _customFocusNode.requestFocus();
+          }
+        });
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -201,78 +222,111 @@ class _BreakDurationStepWidgetState extends State<BreakDurationStepWidget> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 5.w,
-              height: 5.w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _showCustomInput
-                    ? const Color(0xFFA8C3A0)
-                    : const Color(0xFFE0DED8),
-              ),
-              child: _showCustomInput
-                  ? const Icon(Icons.check, color: Colors.white, size: 12)
-                  : null,
-            ),
-            SizedBox(width: 3.w),
-            Expanded(
-              child: _showCustomInput
-                  ? Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _customController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            autofocus: true,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13.sp,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2F2F2F),
+            Row(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  width: 5.w,
+                  height: 5.w,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _showCustomInput
+                        ? const Color(0xFFA8C3A0)
+                        : const Color(0xFFE0DED8),
+                  ),
+                  child: _showCustomInput
+                      ? const Icon(Icons.check, color: Colors.white, size: 12)
+                      : null,
+                ),
+                SizedBox(width: 3.w),
+                Expanded(
+                  child: _showCustomInput
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _customController,
+                                focusNode: _customFocusNode,
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.digitsOnly,
+                                ],
+                                autofocus: true,
+                                textInputAction: TextInputAction.done,
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF2F2F2F),
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Enter minutes',
+                                  hintStyle: GoogleFonts.dmSans(
+                                    fontSize: 11.sp,
+                                    color: const Color(0xFF6F6F6F),
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                                onChanged: (val) {
+                                  final parsed = int.tryParse(val);
+                                  if (val.trim().isEmpty) {
+                                    setState(
+                                      () =>
+                                          _customError = 'Enter minutes (1-60)',
+                                    );
+                                    return;
+                                  }
+                                  if (parsed == null ||
+                                      parsed <= 0 ||
+                                      parsed > 60) {
+                                    setState(
+                                      () => _customError =
+                                          'Use a value from 1 to 60',
+                                    );
+                                    return;
+                                  }
+                                  setState(() => _customError = null);
+                                  widget.onDurationSelected(parsed);
+                                },
+                                onSubmitted: (_) =>
+                                    FocusScope.of(context).unfocus(),
+                              ),
                             ),
-                            decoration: InputDecoration(
-                              hintText: 'Enter minutes',
-                              hintStyle: GoogleFonts.dmSans(
+                            Text(
+                              'min',
+                              style: GoogleFonts.dmSans(
                                 fontSize: 11.sp,
                                 color: const Color(0xFF6F6F6F),
                               ),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
                             ),
-                            onChanged: (val) {
-                              final parsed = int.tryParse(val);
-                              if (parsed != null &&
-                                  parsed > 0 &&
-                                  parsed <= 60) {
-                                widget.onDurationSelected(parsed);
-                              }
-                            },
-                          ),
-                        ),
-                        Text(
-                          'min',
+                          ],
+                        )
+                      : Text(
+                          'Custom',
                           style: GoogleFonts.dmSans(
-                            fontSize: 11.sp,
-                            color: const Color(0xFF6F6F6F),
+                            fontSize: 13.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF2F2F2F),
                           ),
                         ),
-                      ],
-                    )
-                  : Text(
-                      'Custom',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 13.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF2F2F2F),
-                      ),
-                    ),
+                ),
+              ],
             ),
+            if (_showCustomInput && _customError != null) ...[
+              SizedBox(height: 0.8.h),
+              Text(
+                _customError!,
+                style: GoogleFonts.dmSans(
+                  fontSize: 10.sp,
+                  color: const Color(0xFFE76F6F),
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
           ],
         ),
       ),

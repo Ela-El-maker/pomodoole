@@ -248,6 +248,12 @@ class SessionController extends StateNotifier<SessionState>
     _persistTransitionState();
   }
 
+  void completeReflection() {
+    if (state.phase != SessionPhase.reflectionPending) return;
+    state = state.copyWith(phase: SessionPhase.sessionComplete);
+    _persistTransitionState();
+  }
+
   void clearInterruptedSession() {
     state = state.copyWith(interruptedSnapshot: null);
     _clearInterruptedSnapshot();

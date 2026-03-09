@@ -9,6 +9,7 @@ class TaskItemWidget extends StatefulWidget {
   final VoidCallback onToggleComplete;
   final VoidCallback onDelete;
   final VoidCallback onSetActive;
+  final VoidCallback onStartFocus;
   final VoidCallback onEdit;
 
   const TaskItemWidget({
@@ -17,6 +18,7 @@ class TaskItemWidget extends StatefulWidget {
     required this.onToggleComplete,
     required this.onDelete,
     required this.onSetActive,
+    required this.onStartFocus,
     required this.onEdit,
   });
 
@@ -74,6 +76,9 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
     final estimated = widget.task.estimatedPomodoros;
     final completed = widget.task.completedPomodoros;
     final remaining = (estimated - completed).clamp(0, estimated);
+    final tomatoSlots = estimated.clamp(0, 6).toInt();
+    final visibleTomatoes = tomatoSlots.clamp(0, 3).toInt();
+    final overflowTomatoes = (tomatoSlots - visibleTomatoes).clamp(0, 3);
     final hasNotes = widget.task.notes.trim().isNotEmpty;
     final hasDueAt = widget.task.dueAt != null;
 
@@ -213,38 +218,63 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
                           SizedBox(height: 0.5.h),
                           Row(
                             children: [
-                              Text(
-                                '$remaining session${remaining != 1 ? 's' : ''} remaining',
-                                style: GoogleFonts.dmSans(
-                                  fontSize: 12,
-                                  color: _secondaryText,
-                                  fontWeight: FontWeight.w400,
+                              Expanded(
+                                child: Text(
+                                  '$remaining session${remaining != 1 ? 's' : ''} remaining',
+                                  style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: _secondaryText,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              SizedBox(width: 2.w),
-                              // Tomato icons
-                              Flexible(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: List.generate(
-                                    estimated.clamp(0, 6),
-                                    (i) => Padding(
-                                      padding: const EdgeInsets.only(right: 2),
-                                      child: Text(
-                                        i < completed ? '🍅' : '🍅',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: i < completed
-                                              ? null
-                                              : Colors.black.withValues(
-                                                  alpha: 0.25,
+                              if (tomatoSlots > 0) ...[
+                                SizedBox(width: 2.w),
+                                Flexible(
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ...List.generate(
+                                            visibleTomatoes,
+                                            (i) => Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 2,
+                                              ),
+                                              child: Text(
+                                                '🍅',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: i < completed
+                                                      ? null
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.25,
+                                                        ),
                                                 ),
-                                        ),
+                                              ),
+                                            ),
+                                          ),
+                                          if (overflowTomatoes > 0)
+                                            Text(
+                                              '+$overflowTomatoes',
+                                              style: GoogleFonts.dmSans(
+                                                fontSize: 10,
+                                                color: _secondaryText,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                           if (hasNotes) ...[
@@ -285,14 +315,28 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
                         ),
                       )
                     else
-                      IconButton(
-                        tooltip: 'Edit task',
-                        iconSize: 18,
-                        onPressed: widget.onEdit,
-                        icon: const Icon(
-                          Icons.edit_outlined,
-                          color: Color(0xFF6F6F6F),
-                        ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Start focus for this task',
+                            iconSize: 18,
+                            onPressed: widget.onStartFocus,
+                            icon: const Icon(
+                              Icons.play_circle_outline_rounded,
+                              color: Color(0xFF6F6F6F),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Edit task',
+                            iconSize: 18,
+                            onPressed: widget.onEdit,
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: Color(0xFF6F6F6F),
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

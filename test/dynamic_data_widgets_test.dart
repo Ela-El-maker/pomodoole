@@ -70,6 +70,8 @@ void main() {
             totalFocusMinutes: 0,
             weeklyCompletedSessions: 0,
             weeklyGoalSessions: 40,
+            canEditWeeklyGoal: true,
+            weeklyGoalLockMessage: null,
             completedTasks: 0,
             onTimeTasks: 0,
           ),
@@ -79,6 +81,12 @@ void main() {
         ).overrideWith((ref) async => const <TimeBucketStat>[]),
         achievementsProvider.overrideWith(
           (ref) async => const <AchievementView>[],
+        ),
+        reflectionSummaryProvider.overrideWith(
+          (ref) async => const ReflectionSummary(
+            weeklyReflectionCount: 0,
+            moodBreakdown: <MoodBreakdownItem>[],
+          ),
         ),
       ],
     );
@@ -100,6 +108,8 @@ void main() {
             totalFocusMinutes: 50,
             weeklyCompletedSessions: 4,
             weeklyGoalSessions: 40,
+            canEditWeeklyGoal: true,
+            weeklyGoalLockMessage: null,
             completedTasks: 2,
             onTimeTasks: 1,
           ),
@@ -135,10 +145,19 @@ void main() {
             ),
           ],
         ),
+        reflectionSummaryProvider.overrideWith(
+          (ref) async => const ReflectionSummary(
+            weeklyReflectionCount: 2,
+            moodBreakdown: <MoodBreakdownItem>[
+              MoodBreakdownItem(mood: 'Focused', count: 2, percentage: 1.0),
+            ],
+          ),
+        ),
       ],
     );
 
     expect(find.text('Sessions Overview'), findsOneWidget);
+    expect(find.text('Reflections'), findsOneWidget);
     expect(find.text('Achievements'), findsOneWidget);
   });
 

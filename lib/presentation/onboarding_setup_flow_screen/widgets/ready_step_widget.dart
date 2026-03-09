@@ -6,12 +6,14 @@ class ReadyStepWidget extends StatelessWidget {
   final int focusDuration;
   final int breakDuration;
   final String atmosphere;
+  final int weeklyGoal;
 
   const ReadyStepWidget({
     super.key,
     required this.focusDuration,
     required this.breakDuration,
     required this.atmosphere,
+    required this.weeklyGoal,
   });
 
   String _getAtmosphereEmoji(String atmosphere) {
@@ -33,7 +35,7 @@ class ReadyStepWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Step 4 of 4',
+          'Step 5 of 5',
           style: GoogleFonts.dmSans(
             fontSize: 10.sp,
             fontWeight: FontWeight.w400,
@@ -98,6 +100,13 @@ class ReadyStepWidget extends StatelessWidget {
                 'Atmosphere',
                 atmosphere,
                 const Color(0xFFA8C3A0),
+              ),
+              Divider(color: const Color(0xFFE0DED8), height: 3.h),
+              _buildSummaryRow(
+                '🎯',
+                'Weekly Goal',
+                '$weeklyGoal sessions',
+                const Color(0xFFE76F6F),
               ),
             ],
           ),

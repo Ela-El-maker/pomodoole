@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pomodorofocus/data/models/catalog_item.dart';
 import 'package:pomodorofocus/state/app/data_providers.dart';
+import 'package:pomodorofocus/state/session/session_providers.dart';
 import 'package:sizer/sizer.dart';
 import './widgets/mood_chip_widget.dart';
 import './widgets/reflection_prompt_widget.dart';
@@ -34,6 +35,7 @@ class _PostSessionReflectionScreenState
   late Animation<double> _saveOverlayAnimation;
   bool _showSaveOverlay = false;
   bool _hasChanges = false;
+  bool _isSaving = false;
 
   bool get _hasAnyContent =>
       _selectedMood != null ||
@@ -82,15 +84,25 @@ class _PostSessionReflectionScreenState
   }
 
   Future<void> _saveReflection() async {
-    await ref
-        .read(reflectionsRepositoryProvider)
-        .addReflection(
-          mood: _selectedMood,
-          wentWell: _wentWellController.text,
-          distractedBy: _distractedController.text,
-          nextFocus: _nextFocusController.text,
-          notes: _freeNotesController.text,
-        );
+    if (_isSaving) return;
+    _isSaving = true;
+    try {
+      await ref
+          .read(reflectionsRepositoryProvider)
+          .addReflection(
+            mood: _selectedMood,
+            wentWell: _wentWellController.text,
+            distractedBy: _distractedController.text,
+            nextFocus: _nextFocusController.text,
+            notes: _freeNotesController.text,
+          );
+    } catch (_) {
+      _isSaving = false;
+      rethrow;
+    }
+    if (!mounted) return;
+    ref.read(sessionControllerProvider.notifier).completeReflection();
+    _hasChanges = false;
 
     // Show save overlay
     setState(() => _showSaveOverlay = true);
@@ -101,7 +113,10 @@ class _PostSessionReflectionScreenState
         unawaited(
           _saveOverlayController.reverse().then((_) {
             if (mounted) {
-              setState(() => _showSaveOverlay = false);
+              setState(() {
+                _showSaveOverlay = false;
+                _isSaving = false;
+              });
               _navigateAway();
             }
           }),
@@ -120,6 +135,7 @@ class _PostSessionReflectionScreenState
         return; // cancelled
       }
     }
+    ref.read(sessionControllerProvider.notifier).completeReflection();
     _navigateAway();
   }
 
@@ -336,12 +352,14 @@ class _PostSessionReflectionScreenState
 
   void _navigateAway() {
     if (!mounted) return;
+    ref.read(sessionControllerProvider.notifier).completeReflection();
     context.go(AppRoutes.timer);
   }
 
   @override
   Widget build(BuildContext context) {
     final moodsAsync = ref.watch(catalogItemsProvider(CatalogType.mood));
+    final viewInsets = MediaQuery.of(context).viewInsets;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -358,227 +376,234 @@ class _PostSessionReflectionScreenState
             child: Scaffold(
               backgroundColor: const Color(0xFFF7F7F5),
               body: SafeArea(
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 5.w,
-                          vertical: 3.h,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Header
-                            Center(
-                              child: Column(
-                                children: [
-                                  Text(
-                                    'Session Complete 🌿',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w500,
-                                      color: const Color(0xFF2F2F2F),
-                                    ),
-                                  ),
-                                  SizedBox(height: 0.8.h),
-                                  Text(
-                                    'Take a moment to reflect.',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w300,
-                                      color: const Color(0xFF6F6F6F),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            SizedBox(height: 3.5.h),
-
-                            // Mood Tracker
-                            Text(
-                              'How do you feel?',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF2F2F2F),
-                              ),
-                            ),
-                            SizedBox(height: 1.5.h),
-                            moodsAsync.when(
-                              loading: () => const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                              error: (error, stackTrace) => Text(
-                                'Unable to load moods',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: const Color(0xFF6F6F6F),
-                                ),
-                              ),
-                              data: (moods) => Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: moods.map((mood) {
-                                  return MoodChipWidget(
-                                    emoji: mood.emoji ?? '🙂',
-                                    label: mood.label,
-                                    isSelected: _selectedMood == mood.value,
-                                    onTap: () {
-                                      setState(() {
-                                        _selectedMood =
-                                            _selectedMood == mood.value
-                                            ? null
-                                            : mood.value;
-                                        _hasChanges = true;
-                                      });
-                                    },
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-
-                            SizedBox(height: 3.h),
-
-                            // Reflection Prompts
-                            Text(
-                              'Reflection Prompts',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF2F2F2F),
-                              ),
-                            ),
-                            Text(
-                              'Optional — tap to expand',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w300,
-                                color: const Color(0xFF6F6F6F),
-                              ),
-                            ),
-                            SizedBox(height: 1.5.h),
-                            ReflectionPromptWidget(
-                              prompt: 'What went well during this session?',
-                              hintText: 'Share what worked for you...',
-                              controller: _wentWellController,
-                            ),
-                            ReflectionPromptWidget(
-                              prompt: 'What distracted you?',
-                              hintText: 'Any interruptions or distractions...',
-                              controller: _distractedController,
-                            ),
-                            ReflectionPromptWidget(
-                              prompt: 'What will you focus on next?',
-                              hintText: 'Your next intention...',
-                              controller: _nextFocusController,
-                            ),
-
-                            SizedBox(height: 2.h),
-
-                            // Free Notes
-                            Text(
-                              'Session Notes',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: const Color(0xFF2F2F2F),
-                              ),
-                            ),
-                            SizedBox(height: 1.h),
-                            Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF0EFEA),
-                                borderRadius: BorderRadius.circular(16.0),
-                              ),
-                              child: TextField(
-                                controller: _freeNotesController,
-                                maxLines: 5,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w300,
-                                  color: const Color(0xFF2F2F2F),
-                                ),
-                                decoration: InputDecoration(
-                                  hintText:
-                                      'Write anything about this session...',
-                                  hintStyle: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFFAAAAAA),
-                                  ),
-                                  filled: true,
-                                  fillColor: Colors.transparent,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(16.0),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                  contentPadding: const EdgeInsets.all(16),
-                                ),
-                              ),
-                            ),
-
-                            SizedBox(height: 2.h),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Bottom action buttons
-                    Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 5.w,
-                        vertical: 2.h,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: TextButton(
-                              onPressed: _skipReflection,
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                              ),
-                              child: Text(
-                                'Skip Reflection',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w400,
-                                  color: const Color(0xFF6F6F6F),
-                                ),
-                              ),
-                            ),
+                child: AnimatedPadding(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  padding: EdgeInsets.only(bottom: viewInsets.bottom),
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 5.w,
+                            vertical: 3.h,
                           ),
-                          SizedBox(width: 3.w),
-                          Expanded(
-                            flex: 2,
-                            child: ElevatedButton(
-                              onPressed: _saveReflection,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFE76F6F),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(50),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Header
+                              Center(
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'Session Complete 🌿',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w500,
+                                        color: const Color(0xFF2F2F2F),
+                                      ),
+                                    ),
+                                    SizedBox(height: 0.8.h),
+                                    Text(
+                                      'Take a moment to reflect.',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w300,
+                                        color: const Color(0xFF6F6F6F),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                elevation: 0,
                               ),
-                              child: Text(
-                                'Save & Continue',
+
+                              SizedBox(height: 3.5.h),
+
+                              // Mood Tracker
+                              Text(
+                                'How do you feel?',
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF2F2F2F),
+                                ),
+                              ),
+                              SizedBox(height: 1.5.h),
+                              moodsAsync.when(
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                error: (error, stackTrace) => Text(
+                                  'Unable to load moods',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: const Color(0xFF6F6F6F),
+                                  ),
+                                ),
+                                data: (moods) => Wrap(
+                                  spacing: 2.w,
+                                  runSpacing: 1.h,
+                                  alignment: WrapAlignment.center,
+                                  children: moods.map((mood) {
+                                    return MoodChipWidget(
+                                      emoji: mood.emoji ?? '🙂',
+                                      label: mood.label,
+                                      isSelected: _selectedMood == mood.value,
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedMood =
+                                              _selectedMood == mood.value
+                                              ? null
+                                              : mood.value;
+                                          _hasChanges = true;
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+
+                              SizedBox(height: 3.h),
+
+                              // Reflection Prompts
+                              Text(
+                                'Reflection Prompts',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF2F2F2F),
+                                ),
+                              ),
+                              Text(
+                                'Optional — tap to expand',
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w300,
+                                  color: const Color(0xFF6F6F6F),
+                                ),
+                              ),
+                              SizedBox(height: 1.5.h),
+                              ReflectionPromptWidget(
+                                prompt: 'What went well during this session?',
+                                hintText: 'Share what worked for you...',
+                                controller: _wentWellController,
+                              ),
+                              ReflectionPromptWidget(
+                                prompt: 'What distracted you?',
+                                hintText:
+                                    'Any interruptions or distractions...',
+                                controller: _distractedController,
+                              ),
+                              ReflectionPromptWidget(
+                                prompt: 'What will you focus on next?',
+                                hintText: 'Your next intention...',
+                                controller: _nextFocusController,
+                              ),
+
+                              SizedBox(height: 2.h),
+
+                              // Free Notes
+                              Text(
+                                'Session Notes',
+                                style: GoogleFonts.inter(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF2F2F2F),
+                                ),
+                              ),
+                              SizedBox(height: 1.h),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF0EFEA),
+                                  borderRadius: BorderRadius.circular(16.0),
+                                ),
+                                child: TextField(
+                                  controller: _freeNotesController,
+                                  maxLines: 5,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    color: const Color(0xFF2F2F2F),
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText:
+                                        'Write anything about this session...',
+                                    hintStyle: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: const Color(0xFFAAAAAA),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.transparent,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(16.0),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                ),
+                              ),
+
+                              SizedBox(height: 2.h),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Bottom action buttons
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 5.w,
+                          vertical: 2.h,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: _skipReflection,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Skip Reflection',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    color: const Color(0xFF6F6F6F),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            SizedBox(width: 3.w),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton(
+                                onPressed: _isSaving ? null : _saveReflection,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE76F6F),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Save & Continue',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

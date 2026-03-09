@@ -5,12 +5,14 @@ import 'package:sizer/sizer.dart';
 class WeeklyGoalWidget extends StatelessWidget {
   final int completedSessions;
   final int goalSessions;
+  final bool canEditGoal;
   final VoidCallback? onEditGoal;
 
   const WeeklyGoalWidget({
     super.key,
     required this.completedSessions,
     required this.goalSessions,
+    required this.canEditGoal,
     this.onEditGoal,
   });
 
@@ -80,9 +82,11 @@ class WeeklyGoalWidget extends StatelessWidget {
                     const Spacer(),
                     if (onEditGoal != null)
                       IconButton(
-                        onPressed: onEditGoal,
+                        onPressed: canEditGoal ? onEditGoal : null,
                         icon: const Icon(Icons.edit_outlined, size: 18),
-                        tooltip: 'Edit weekly goal',
+                        tooltip: canEditGoal
+                            ? 'Edit weekly goal'
+                            : 'Goal editing locked until achieved or week end',
                       ),
                   ],
                 ),
@@ -105,6 +109,17 @@ class WeeklyGoalWidget extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (!canEditGoal && remaining > 0) ...[
+                  SizedBox(height: 0.4.h),
+                  Text(
+                    'Editing locked until goal is achieved or this week ends.',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ),
           ),

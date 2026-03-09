@@ -173,8 +173,9 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<TasksTableData?> getTaskById(String taskId) {
-    return (select(tasksTable)..where((table) => table.id.equals(taskId)))
-        .getSingleOrNull();
+    return (select(
+      tasksTable,
+    )..where((table) => table.id.equals(taskId))).getSingleOrNull();
   }
 
   Future<TasksTableData?> getActiveTask() {
@@ -234,12 +235,11 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<List<TasksTableData>> getReminderEnabledTasks() {
-    return (select(tasksTable)
-          ..where(
-            (table) =>
-                table.reminderEnabled.equals(true) &
-                table.isCompleted.equals(false),
-          ))
+    return (select(tasksTable)..where(
+          (table) =>
+              table.reminderEnabled.equals(true) &
+              table.isCompleted.equals(false),
+        ))
         .get();
   }
 
@@ -259,6 +259,16 @@ class AppDatabase extends _$AppDatabase {
         notes: Value(notes),
       ),
     );
+  }
+
+  Future<List<ReflectionsTableData>> getAllReflections() {
+    return (select(reflectionsTable)..orderBy([
+          (table) => OrderingTerm(
+            expression: table.createdAt,
+            mode: OrderingMode.desc,
+          ),
+        ]))
+        .get();
   }
 
   Future<void> upsertSoundMix(SoundMixesTableCompanion mix) {
@@ -355,13 +365,13 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<int> getCompletedTasksOnTimeCount() async {
-    final query =
-        select(tasksTable)..where(
-          (t) =>
-              t.isCompleted.equals(true) &
-              t.dueAt.isNotNull() &
-              t.updatedAt.isSmallerOrEqual(t.dueAt),
-        );
+    final query = select(tasksTable)
+      ..where(
+        (t) =>
+            t.isCompleted.equals(true) &
+            t.dueAt.isNotNull() &
+            t.updatedAt.isSmallerOrEqual(t.dueAt),
+      );
     final rows = await query.get();
     return rows.length;
   }

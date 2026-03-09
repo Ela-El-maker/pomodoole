@@ -23,7 +23,7 @@ class AtmosphereStepWidget extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Step 3 of 4',
+          'Step 3 of 5',
           style: GoogleFonts.dmSans(
             fontSize: 10.sp,
             fontWeight: FontWeight.w400,

@@ -98,3 +98,11 @@ final achievementsProvider = FutureProvider<List<AchievementView>>((ref) async {
       .watch(statisticsRepositoryProvider)
       .getAchievements(DateTime.now());
 });
+
+final reflectionSummaryProvider = FutureProvider<ReflectionSummary>((
+  ref,
+) async {
+  return ref
+      .watch(statisticsRepositoryProvider)
+      .getWeeklyReflectionSummary(DateTime.now());
+});

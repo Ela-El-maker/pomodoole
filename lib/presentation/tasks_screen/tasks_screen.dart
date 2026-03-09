@@ -3,10 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pomodorofocus/data/models/task_entity.dart';
+import 'package:pomodorofocus/app/router/route_paths.dart';
 import 'package:pomodorofocus/services/notification_service.dart';
 import 'package:pomodorofocus/state/app/data_providers.dart';
+import 'package:pomodorofocus/state/session/session_providers.dart';
 import 'package:pomodorofocus/state/tasks/task_providers.dart';
 import 'package:sizer/sizer.dart';
 
@@ -36,6 +39,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (_) => AddTaskSheetWidget(
         existingTask: existingTask,
@@ -140,6 +144,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     }
   }
 
+  Future<void> _startFocusForTask(TaskEntity task) async {
+    await _setActiveTask(task);
+    ref.read(sessionControllerProvider.notifier).setTask(task.title);
+    if (!mounted) return;
+    context.go(RoutePaths.timer);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksStreamProvider);
@@ -212,6 +223,8 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                           _toggleComplete(task),
                                       onDelete: () => _deleteTask(task.id),
                                       onSetActive: () => _setActiveTask(task),
+                                      onStartFocus: () =>
+                                          _startFocusForTask(task),
                                       onEdit: () =>
                                           _showAddTaskSheet(existingTask: task),
                                     ),
@@ -268,8 +281,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                             _toggleComplete(task),
                                         onDelete: () => _deleteTask(task.id),
                                         onSetActive: () {},
-                                        onEdit: () =>
-                                            _showAddTaskSheet(existingTask: task),
+                                        onStartFocus: () {},
+                                        onEdit: () => _showAddTaskSheet(
+                                          existingTask: task,
+                                        ),
                                       ),
                                     ),
                                   ),

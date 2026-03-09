@@ -139,13 +139,13 @@ void main() {
     await database.close();
   });
 
-  test('rapid start calls do not create duplicate running transitions', () async {
+  test('reflection completion restores sessionComplete actions', () async {
     SharedPreferences.setMockInitialValues({
       'notifications_enabled': false,
       'vibration_enabled': false,
-      'work_duration': 25,
-      'short_break_duration': 5,
-      'long_break_duration': 15,
+      'work_duration': 1,
+      'short_break_duration': 1,
+      'long_break_duration': 1,
     });
 
     final prefs = await SharedPreferences.getInstance();
@@ -164,19 +164,65 @@ void main() {
     );
 
     await controller.initialize();
+    controller.start();
+    for (var i = 0; i <= 60; i++) {
+      tickDriver.tick();
+    }
+    await Future<void>.delayed(Duration.zero);
 
-    controller.start();
-    controller.start();
-    controller.start();
-    tickDriver.tick();
+    expect(controller.state.phase, SessionPhase.sessionComplete);
 
-    expect(controller.state.phase, SessionPhase.focusActive);
-    expect(tickDriver.startCalls, 1);
-    expect(controller.state.remainingSeconds, 1499);
+    controller.markReflectionPending();
+    expect(controller.state.phase, SessionPhase.reflectionPending);
+
+    controller.completeReflection();
+    expect(controller.state.phase, SessionPhase.sessionComplete);
 
     controller.dispose();
     await database.close();
   });
+
+  test(
+    'rapid start calls do not create duplicate running transitions',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'notifications_enabled': false,
+        'vibration_enabled': false,
+        'work_duration': 25,
+        'short_break_duration': 5,
+        'long_break_duration': 15,
+      });
+
+      final prefs = await SharedPreferences.getInstance();
+      final tickDriver = FakeTickDriver();
+      final database = AppDatabase(NativeDatabase.memory());
+
+      final controller = SessionController(
+        preferences: prefs,
+        tickDriver: tickDriver,
+        notificationService: NotificationService(),
+        homeWidgetService: HomeWidgetService(),
+        hapticService: HapticService(),
+        sessionHistoryRepository: SessionHistoryRepository(database),
+        tasksRepository: TasksRepository(database),
+        logger: const AppLogger(),
+      );
+
+      await controller.initialize();
+
+      controller.start();
+      controller.start();
+      controller.start();
+      tickDriver.tick();
+
+      expect(controller.state.phase, SessionPhase.focusActive);
+      expect(tickDriver.startCalls, 1);
+      expect(controller.state.remainingSeconds, 1499);
+
+      controller.dispose();
+      await database.close();
+    },
+  );
 
   test('break completion returns state to idle focus', () async {
     SharedPreferences.setMockInitialValues({
@@ -278,10 +324,7 @@ void main() {
 
     restoredController.restoreInterruptedSession();
     expect(restoredController.state.phase, SessionPhase.focusPaused);
-    expect(
-      restoredController.state.remainingSeconds,
-      remainingBeforePause,
-    );
+    expect(restoredController.state.remainingSeconds, remainingBeforePause);
     expect(restoredController.state.interruptedSnapshot, isNull);
 
     restoredController.dispose();

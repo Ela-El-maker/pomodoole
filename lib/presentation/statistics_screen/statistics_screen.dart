@@ -9,6 +9,7 @@ import './widgets/achievement_badges_widget.dart';
 import './widgets/bar_chart_widget.dart';
 import './widgets/empty_state_widget.dart';
 import './widgets/line_chart_widget.dart';
+import './widgets/reflections_section_widget.dart';
 import './widgets/segment_control_widget.dart';
 import './widgets/summary_cards_widget.dart';
 import './widgets/weekly_goal_widget.dart';
@@ -38,11 +39,25 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     ref.invalidate(statisticsSummaryProvider);
     ref.invalidate(statisticsBucketsProvider(_selectedRange));
     ref.invalidate(achievementsProvider);
+    ref.invalidate(reflectionSummaryProvider);
     await Future<void>.delayed(const Duration(milliseconds: 250));
   }
 
-  Future<void> _editWeeklyGoal(int currentGoal) async {
-    var tempGoal = currentGoal;
+  Future<void> _editWeeklyGoal(StatsSummary summary) async {
+    if (!summary.canEditWeeklyGoal) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            summary.weeklyGoalLockMessage ??
+                'Goal editing is locked for this week.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    var tempGoal = summary.weeklyGoalSessions;
     final selected = await showModalBottomSheet<int>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -109,6 +124,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     final summaryAsync = ref.watch(statisticsSummaryProvider);
     final bucketsAsync = ref.watch(statisticsBucketsProvider(_selectedRange));
     final achievementsAsync = ref.watch(achievementsProvider);
+    final reflectionsAsync = ref.watch(reflectionSummaryProvider);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -129,93 +145,117 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                     error: (error, stackTrace) =>
                         _ErrorState(message: '$error'),
                     data: (achievements) {
-                      final hasData = summary.totalFocusMinutes > 0;
-                      if (!hasData) {
-                        return const EmptyStateWidget();
-                      }
-                      return RefreshIndicator(
-                        onRefresh: _onRefresh,
-                        color: theme.colorScheme.primary,
-                        child: CustomScrollView(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          slivers: [
-                            SliverToBoxAdapter(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildHeader(theme),
-                                  SizedBox(height: 2.h),
-                                  Semantics(
-                                    label:
-                                        'Today: ${summary.todaySessions} sessions, ${summary.currentStreak} day streak, ${summary.totalFocusMinutes} total focus minutes',
-                                    child: SummaryCardsWidget(
-                                      todaySessions: summary.todaySessions,
-                                      currentStreak: summary.currentStreak,
-                                      totalFocusMinutes:
-                                          summary.totalFocusMinutes,
-                                    ),
+                      return reflectionsAsync.when(
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (error, stackTrace) =>
+                            _ErrorState(message: '$error'),
+                        data: (reflectionSummary) {
+                          final hasData =
+                              summary.totalFocusMinutes > 0 ||
+                              reflectionSummary.weeklyReflectionCount > 0;
+                          if (!hasData) {
+                            return const EmptyStateWidget();
+                          }
+                          return RefreshIndicator(
+                            onRefresh: _onRefresh,
+                            color: theme.colorScheme.primary,
+                            child: CustomScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              slivers: [
+                                SliverToBoxAdapter(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      _buildHeader(theme),
+                                      SizedBox(height: 2.h),
+                                      Semantics(
+                                        label:
+                                            'Today: ${summary.todaySessions} sessions, ${summary.currentStreak} day streak, ${summary.totalFocusMinutes} total focus minutes',
+                                        child: SummaryCardsWidget(
+                                          todaySessions: summary.todaySessions,
+                                          currentStreak: summary.currentStreak,
+                                          totalFocusMinutes:
+                                              summary.totalFocusMinutes,
+                                        ),
+                                      ),
+                                      SizedBox(height: 1.2.h),
+                                      Text(
+                                        'Tasks completed: ${summary.completedTasks} • On-time: ${summary.onTimeTasks}',
+                                        style: theme.textTheme.bodyMedium,
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Semantics(
+                                        label: 'Time period selector',
+                                        child: SegmentControlWidget(
+                                          selectedIndex: _selectedSegment,
+                                          onChanged: (index) {
+                                            setState(
+                                              () => _selectedSegment = index,
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        'Sessions Overview',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      SizedBox(height: 1.h),
+                                      _buildSemanticBarChart(buckets),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        'Focus Time Trend',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      SizedBox(height: 1.h),
+                                      LineChartWidget(data: buckets),
+                                      SizedBox(height: 2.h),
+                                      Semantics(
+                                        label:
+                                            'Weekly goal: ${summary.weeklyCompletedSessions} of ${summary.weeklyGoalSessions} sessions completed',
+                                        child: WeeklyGoalWidget(
+                                          completedSessions:
+                                              summary.weeklyCompletedSessions,
+                                          goalSessions:
+                                              summary.weeklyGoalSessions,
+                                          canEditGoal:
+                                              summary.canEditWeeklyGoal,
+                                          onEditGoal: () =>
+                                              _editWeeklyGoal(summary),
+                                        ),
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      ReflectionsSectionWidget(
+                                        summary: reflectionSummary,
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        'Achievements',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                      SizedBox(height: 1.h),
+                                      AchievementBadgesWidget(
+                                        achievements: achievements,
+                                      ),
+                                      SizedBox(height: 2.h),
+                                    ],
                                   ),
-                                  SizedBox(height: 1.2.h),
-                                  Text(
-                                    'Tasks completed: ${summary.completedTasks} • On-time: ${summary.onTimeTasks}',
-                                    style: theme.textTheme.bodyMedium,
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Semantics(
-                                    label: 'Time period selector',
-                                    child: SegmentControlWidget(
-                                      selectedIndex: _selectedSegment,
-                                      onChanged: (index) {
-                                        setState(
-                                          () => _selectedSegment = index,
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    'Sessions Overview',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 1.h),
-                                  _buildSemanticBarChart(buckets),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    'Focus Time Trend',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 1.h),
-                                  LineChartWidget(data: buckets),
-                                  SizedBox(height: 2.h),
-                                  Semantics(
-                                    label:
-                                        'Weekly goal: ${summary.weeklyCompletedSessions} of ${summary.weeklyGoalSessions} sessions completed',
-                                    child: WeeklyGoalWidget(
-                                      completedSessions:
-                                          summary.weeklyCompletedSessions,
-                                      goalSessions: summary.weeklyGoalSessions,
-                                      onEditGoal: () =>
-                                          _editWeeklyGoal(summary.weeklyGoalSessions),
-                                    ),
-                                  ),
-                                  SizedBox(height: 2.h),
-                                  Text(
-                                    'Achievements',
-                                    style: theme.textTheme.titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w600),
-                                  ),
-                                  SizedBox(height: 1.h),
-                                  AchievementBadgesWidget(
-                                    achievements: achievements,
-                                  ),
-                                  SizedBox(height: 2.h),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     },
                   );

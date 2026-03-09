@@ -1,4 +1,4 @@
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodorofocus/data/db/app_database.dart';
@@ -18,6 +18,21 @@ Future<void> _insertFocusSession(
           sessionType: 'Focus',
           durationSeconds: durationSeconds,
           completed: const Value(true),
+          createdAt: Value(createdAt),
+        ),
+      );
+}
+
+Future<void> _insertReflection(
+  AppDatabase db, {
+  required DateTime createdAt,
+  String? mood,
+}) async {
+  await db
+      .into(db.reflectionsTable)
+      .insert(
+        ReflectionsTableCompanion.insert(
+          mood: Value(mood),
           createdAt: Value(createdAt),
         ),
       );
@@ -97,4 +112,142 @@ void main() {
       expect(summary.currentStreak, greaterThanOrEqualTo(1));
     },
   );
+
+  test('weekly goal edit locks within current week until achieved', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(
+      Duration(days: today.weekday - DateTime.monday),
+    );
+
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'weekly_goal_sessions': 5,
+      'weekly_goal_week_start_epoch_ms': weekStart.millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = StatisticsRepository(db, prefs);
+
+    final summary = await repo.getSummary();
+    expect(summary.canEditWeeklyGoal, isFalse);
+    expect(summary.weeklyGoalLockMessage, isNotNull);
+  });
+
+  test('weekly goal edit unlocks once goal is achieved', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = today.subtract(
+      Duration(days: today.weekday - DateTime.monday),
+    );
+
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'weekly_goal_sessions': 1,
+      'weekly_goal_week_start_epoch_ms': weekStart.millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = StatisticsRepository(db, prefs);
+
+    await _insertFocusSession(db, createdAt: now);
+    final summary = await repo.getSummary();
+    expect(summary.canEditWeeklyGoal, isTrue);
+  });
+
+  test('weekly goal edit unlocks after the locked week ends', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentWeekStart = today.subtract(
+      Duration(days: today.weekday - DateTime.monday),
+    );
+    final previousWeekStart = currentWeekStart.subtract(
+      const Duration(days: 7),
+    );
+
+    SharedPreferences.setMockInitialValues(<String, Object>{
+      'weekly_goal_sessions': 5,
+      'weekly_goal_week_start_epoch_ms':
+          previousWeekStart.millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = StatisticsRepository(db, prefs);
+
+    final summary = await repo.getSummary();
+    expect(summary.canEditWeeklyGoal, isTrue);
+  });
+
+  test(
+    'weekly reflection summary groups moods and handles unspecified',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final prefs = await SharedPreferences.getInstance();
+      final repo = StatisticsRepository(db, prefs);
+      final now = DateTime.now();
+
+      await _insertReflection(
+        db,
+        createdAt: now.subtract(const Duration(hours: 1)),
+        mood: 'Focused',
+      );
+      await _insertReflection(
+        db,
+        createdAt: now.subtract(const Duration(hours: 2)),
+        mood: 'Focused',
+      );
+      await _insertReflection(
+        db,
+        createdAt: now.subtract(const Duration(hours: 3)),
+        mood: '',
+      );
+      await _insertReflection(
+        db,
+        createdAt: now.subtract(const Duration(days: 10)),
+        mood: 'Calm',
+      );
+
+      final summary = await repo.getWeeklyReflectionSummary(now);
+      expect(summary.weeklyReflectionCount, 3);
+      expect(summary.moodBreakdown.first.mood, 'Focused');
+      expect(summary.moodBreakdown.first.count, 2);
+      expect(
+        summary.moodBreakdown.any(
+          (item) => item.mood == 'Unspecified' && item.count == 1,
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'weekly goal setup state is editable before first initialization',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
+      SharedPreferences.setMockInitialValues(<String, Object>{});
+      final prefs = await SharedPreferences.getInstance();
+      final repo = StatisticsRepository(db, prefs);
+
+      final setup = await repo.getWeeklyGoalSetupState();
+      expect(setup.initialized, isFalse);
+      expect(setup.canEdit, isTrue);
+    },
+  );
+
+  test('setWeeklyGoalSessions marks weekly goal as initialized', () async {
+    final db = AppDatabase(NativeDatabase.memory());
+    addTearDown(() => db.close());
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    final prefs = await SharedPreferences.getInstance();
+    final repo = StatisticsRepository(db, prefs);
+
+    await repo.setWeeklyGoalSessions(30);
+    final setup = await repo.getWeeklyGoalSetupState();
+    expect(setup.initialized, isTrue);
+    expect(setup.weeklyGoalSessions, 30);
+  });
 }
