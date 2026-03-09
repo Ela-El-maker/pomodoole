@@ -5,7 +5,6 @@ class AppRoutes {
   static const String statistics = RoutePaths.statistics;
   static const String timer = RoutePaths.timer;
   static const String settings = RoutePaths.settings;
-  static const String taskManagement = '/task-management-screen';
   static const String onboardingWelcome = RoutePaths.onboardingWelcome;
   static const String onboardingSetupFlow = RoutePaths.onboardingSetupFlow;
   static const String focusScreen = '/focus-screen';

@@ -20,7 +20,6 @@ class RoutePaths {
   static const Map<String, String> legacyRedirects = {
     '/focus-screen': timer,
     '/active-focus-mode-screen': timer,
-    '/task-management-screen': tasks,
   };
 
   static const List<String> bottomTabPaths = [
