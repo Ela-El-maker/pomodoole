@@ -7,11 +7,13 @@ class SessionHistoryRepository {
 
   Future<void> addEntry({
     required String sessionType,
+    String? taskId,
     required int durationSeconds,
     required bool completed,
   }) {
     return _database.saveSessionHistory(
       sessionType: sessionType,
+      taskId: taskId,
       durationSeconds: durationSeconds,
       completed: completed,
     );
