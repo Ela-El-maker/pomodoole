@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sizer/sizer.dart';
 
@@ -32,6 +35,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _soundEnabled = true;
   double _volume = 0.8;
   String _selectedSound = 'Bell';
+  String _defaultFocusAlertSound = 'Bell';
+  String _defaultTaskReminderSound = 'Bell';
 
   // Vibration settings
   bool _vibrationEnabled = true;
@@ -51,13 +56,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   final AppStateService _appState = AppStateService();
   final HapticService _haptic = HapticService();
+  final AudioPlayer _previewPlayer = AudioPlayer();
 
   final List<String> _soundOptions = [
-    'Bell',
-    'Chime',
-    'Ding',
-    'Beep',
-    'Nature',
+    'Birdsong',
+    'Fireplace',
+    'Rain',
+    'Forest',
+    'Cafe',
   ];
 
   // Focus nodes for keyboard navigation
@@ -71,6 +77,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   void dispose() {
+    unawaited(_previewPlayer.dispose());
     for (final fn in _focusNodes) {
       fn.dispose();
     }
@@ -83,9 +90,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _workDuration = prefs.getInt('work_duration') ?? 25;
       _shortBreakDuration = prefs.getInt('short_break_duration') ?? 5;
       _longBreakDuration = prefs.getInt('long_break_duration') ?? 15;
-      _soundEnabled = prefs.getBool('sound_enabled') ?? true;
+      _soundEnabled = prefs.getBool('notifications_enabled') ?? true;
       _volume = prefs.getDouble('volume') ?? 0.8;
-      _selectedSound = prefs.getString('selected_sound') ?? 'Bell';
+      _selectedSound = prefs.getString('selected_sound') ?? 'Birdsong';
+      _defaultFocusAlertSound =
+          prefs.getString('default_focus_alert_sound') ?? _selectedSound;
+      _defaultTaskReminderSound =
+          prefs.getString('default_task_reminder_sound') ?? _selectedSound;
       _vibrationEnabled = prefs.getBool('vibration_enabled') ?? true;
       _completionVibration = prefs.getBool('completion_vibration') ?? true;
       _highContrastMode = _appState.highContrastMode;
@@ -160,9 +171,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     await prefs.remove('work_duration');
     await prefs.remove('short_break_duration');
     await prefs.remove('long_break_duration');
-    await prefs.remove('sound_enabled');
+    await prefs.remove('notifications_enabled');
     await prefs.remove('volume');
     await prefs.remove('selected_sound');
+    await prefs.remove('default_focus_alert_sound');
+    await prefs.remove('default_task_reminder_sound');
     await prefs.remove('vibration_enabled');
     await prefs.remove('completion_vibration');
     setState(() {
@@ -171,7 +184,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _longBreakDuration = 15;
       _soundEnabled = true;
       _volume = 0.8;
-      _selectedSound = 'Bell';
+      _selectedSound = 'Birdsong';
+      _defaultFocusAlertSound = 'Birdsong';
+      _defaultTaskReminderSound = 'Birdsong';
       _vibrationEnabled = true;
       _completionVibration = true;
     });
@@ -261,6 +276,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showSoundPicker() {
+    _showSoundSelectionBottomSheet(
+      title: 'Select Notification Sound',
+      current: _selectedSound,
+      onSelected: (sound) async {
+        setState(() => _selectedSound = sound);
+        await _saveSetting('selected_sound', sound);
+        await _previewSound(sound);
+      },
+    );
+  }
+
+  void _showDefaultSoundPicker({
+    required String title,
+    required String current,
+    required ValueChanged<String> onSelected,
+  }) {
+    _showSoundSelectionBottomSheet(
+      title: title,
+      current: current,
+      onSelected: (sound) async {
+        onSelected(sound);
+        await _previewSound(sound);
+      },
+    );
+  }
+
+  void _showSoundSelectionBottomSheet({
+    required String title,
+    required String current,
+    required ValueChanged<String> onSelected,
+  }) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -276,7 +322,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 1.h),
                 child: Text(
-                  'Select Notification Sound',
+                  title,
                   style: theme.textTheme.titleMedium,
                 ),
               ),
@@ -284,17 +330,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ..._soundOptions.map(
                 (sound) => ListTile(
                   title: Text(sound, style: theme.textTheme.bodyLarge),
-                  trailing: _selectedSound == sound
+                  trailing: current == sound
                       ? CustomIconWidget(
                           iconName: 'check_circle',
                           color: theme.colorScheme.primary,
                           size: 22,
                         )
                       : null,
-                  onTap: () {
+                  onTap: () async {
                     Navigator.of(ctx).pop();
-                    setState(() => _selectedSound = sound);
-                    _saveSetting('selected_sound', sound);
+                    onSelected(sound);
                   },
                 ),
               ),
@@ -303,6 +348,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
       },
     );
+  }
+
+  Future<void> _previewSound(String soundLabel) async {
+    final relativePath = switch (soundLabel) {
+      'Birdsong' => 'sounds/bird-song-1.mp3',
+      'Fireplace' => 'sounds/fire-place-1.mp3',
+      'Rain' => 'sounds/rain-1.mp3',
+      'Forest' => 'sounds/forest-1.mp3',
+      'Cafe' => 'sounds/cafe-1.mp3',
+      _ => null,
+    };
+
+    if (relativePath == null || !_soundEnabled) return;
+    try {
+      await _previewPlayer.stop();
+      await _previewPlayer.play(
+        AssetSource(relativePath),
+        volume: _volume.clamp(0.0, 1.0).toDouble(),
+      );
+      Future<void>.delayed(const Duration(milliseconds: 1800), () {
+        unawaited(_previewPlayer.stop());
+      });
+    } catch (_) {
+      // Keep settings stable if preview playback fails on some devices.
+    }
   }
 
   Widget _buildSettingsRow({
@@ -516,15 +586,64 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           selectedSound: _selectedSound,
                           onSoundToggle: (val) {
                             setState(() => _soundEnabled = val);
-                            _saveSetting('sound_enabled', val);
+                            _saveSetting('notifications_enabled', val);
+                            ref
+                                .read(sessionControllerProvider.notifier)
+                                .setNotificationsEnabled(val);
                           },
                           onVolumeChanged: (val) {
                             setState(() => _volume = val);
                           },
-                          onVolumeChangeEnd: (val) {
-                            _saveSetting('volume', val);
+                          onVolumeChangeEnd: (val) async {
+                            await _saveSetting('volume', val);
+                            await _previewSound(_selectedSound);
                           },
                           onSoundPickerTap: _showSoundPicker,
+                        ),
+                        SizedBox(height: 1.h),
+                        _buildSettingsRow(
+                          title: 'Focus completion sound',
+                          subtitle: _defaultFocusAlertSound,
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: _soundEnabled
+                              ? () => _showDefaultSoundPicker(
+                                  title: 'Focus Completion Sound',
+                                  current: _defaultFocusAlertSound,
+                                  onSelected: (sound) {
+                                    setState(
+                                      () => _defaultFocusAlertSound = sound,
+                                    );
+                                    unawaited(
+                                      _saveSetting(
+                                        'default_focus_alert_sound',
+                                        sound,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : null,
+                        ),
+                        _buildSettingsRow(
+                          title: 'Task reminder sound',
+                          subtitle: _defaultTaskReminderSound,
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: _soundEnabled
+                              ? () => _showDefaultSoundPicker(
+                                  title: 'Task Reminder Sound',
+                                  current: _defaultTaskReminderSound,
+                                  onSelected: (sound) {
+                                    setState(
+                                      () => _defaultTaskReminderSound = sound,
+                                    );
+                                    unawaited(
+                                      _saveSetting(
+                                        'default_task_reminder_sound',
+                                        sound,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : null,
                         ),
                         SizedBox(height: 1.5.h),
                         // Sound Mixer navigation
@@ -615,10 +734,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           onVibrationToggle: (val) {
                             setState(() => _vibrationEnabled = val);
                             _saveSetting('vibration_enabled', val);
+                            ref
+                                .read(sessionControllerProvider.notifier)
+                                .setVibrationEnabled(val);
                           },
                           onCompletionVibrationToggle: (val) {
                             setState(() => _completionVibration = val);
                             _saveSetting('completion_vibration', val);
+                            _appState.setHapticOnSessionComplete(val);
                           },
                         ),
                         SizedBox(height: 3.h),

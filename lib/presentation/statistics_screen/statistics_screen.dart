@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pomodorofocus/data/models/statistics_models.dart';
+import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:sizer/sizer.dart';
 
-import '../../core/app_export.dart';
 import '../../widgets/custom_icon_widget.dart';
 import './widgets/achievement_badges_widget.dart';
 import './widgets/bar_chart_widget.dart';
@@ -11,210 +13,245 @@ import './widgets/segment_control_widget.dart';
 import './widgets/summary_cards_widget.dart';
 import './widgets/weekly_goal_widget.dart';
 
-class StatisticsScreen extends StatefulWidget {
+class StatisticsScreen extends ConsumerStatefulWidget {
   const StatisticsScreen({super.key});
 
   @override
-  State<StatisticsScreen> createState() => _StatisticsScreenState();
+  ConsumerState<StatisticsScreen> createState() => _StatisticsScreenState();
 }
 
-class _StatisticsScreenState extends State<StatisticsScreen> {
+class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   int _selectedSegment = 0;
-  final bool _hasData = true;
 
-  final List<Map<String, dynamic>> _dailySessions = [
-    {"day": "Mon", "sessions": 4, "focusMinutes": 100},
-    {"day": "Tue", "sessions": 6, "focusMinutes": 150},
-    {"day": "Wed", "sessions": 3, "focusMinutes": 75},
-    {"day": "Thu", "sessions": 8, "focusMinutes": 200},
-    {"day": "Fri", "sessions": 5, "focusMinutes": 125},
-    {"day": "Sat", "sessions": 2, "focusMinutes": 50},
-    {"day": "Sun", "sessions": 7, "focusMinutes": 175},
-  ];
-
-  final List<Map<String, dynamic>> _weeklySessions = [
-    {"week": "W1", "sessions": 28, "focusMinutes": 700},
-    {"week": "W2", "sessions": 35, "focusMinutes": 875},
-    {"week": "W3", "sessions": 22, "focusMinutes": 550},
-    {"week": "W4", "sessions": 40, "focusMinutes": 1000},
-  ];
-
-  final List<Map<String, dynamic>> _monthlySessions = [
-    {"month": "Oct", "sessions": 90, "focusMinutes": 2250},
-    {"month": "Nov", "sessions": 110, "focusMinutes": 2750},
-    {"month": "Dec", "sessions": 85, "focusMinutes": 2125},
-    {"month": "Jan", "sessions": 120, "focusMinutes": 3000},
-    {"month": "Feb", "sessions": 95, "focusMinutes": 2375},
-    {"month": "Mar", "sessions": 45, "focusMinutes": 1125},
-  ];
-
-  final List<Map<String, dynamic>> _achievements = [
-    {
-      "title": "First Session",
-      "description": "Completed your first Pomodoro!",
-      "icon": "emoji_events",
-      "color": 0xFFFFD700,
-      "unlocked": true,
-    },
-    {
-      "title": "7-Day Streak",
-      "description": "7 consecutive days of focus",
-      "icon": "local_fire_department",
-      "color": 0xFFFF6B35,
-      "unlocked": true,
-    },
-    {
-      "title": "100 Sessions",
-      "description": "Completed 100 total sessions",
-      "icon": "military_tech",
-      "color": 0xFF7A9CC6,
-      "unlocked": true,
-    },
-    {
-      "title": "30-Day Streak",
-      "description": "30 consecutive days of focus",
-      "icon": "diamond",
-      "color": 0xFF9B59B6,
-      "unlocked": false,
-    },
-  ];
+  StatsRange get _selectedRange {
+    switch (_selectedSegment) {
+      case 1:
+        return StatsRange.weekly;
+      case 2:
+        return StatsRange.monthly;
+      default:
+        return StatsRange.daily;
+    }
+  }
 
   Future<void> _onRefresh() async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    ref.invalidate(statisticsSummaryProvider);
+    ref.invalidate(statisticsBucketsProvider(_selectedRange));
+    ref.invalidate(achievementsProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 250));
   }
 
-  List<Map<String, dynamic>> get _currentData {
-    switch (_selectedSegment) {
-      case 1:
-        return _weeklySessions;
-      case 2:
-        return _monthlySessions;
-      default:
-        return _dailySessions;
-    }
-  }
+  Future<void> _editWeeklyGoal(int currentGoal) async {
+    var tempGoal = currentGoal;
+    final selected = await showModalBottomSheet<int>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) => Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 3.h),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Weekly Sessions Goal',
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+                SizedBox(height: 2.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      onPressed: tempGoal > 1
+                          ? () => setModalState(() => tempGoal--)
+                          : null,
+                      icon: const Icon(Icons.remove_circle_outline),
+                    ),
+                    Text(
+                      '$tempGoal sessions',
+                      style: Theme.of(ctx).textTheme.titleLarge,
+                    ),
+                    IconButton(
+                      onPressed: tempGoal < 200
+                          ? () => setModalState(() => tempGoal++)
+                          : null,
+                      icon: const Icon(Icons.add_circle_outline),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 2.h),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(tempGoal),
+                    child: const Text('Save Goal'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
 
-  String get _xAxisKey {
-    switch (_selectedSegment) {
-      case 1:
-        return "week";
-      case 2:
-        return "month";
-      default:
-        return "day";
-    }
+    if (selected == null) return;
+    await ref
+        .read(statisticsRepositoryProvider)
+        .setWeeklyGoalSessions(selected.clamp(1, 200));
+    ref.invalidate(statisticsSummaryProvider);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final summaryAsync = ref.watch(statisticsSummaryProvider);
+    final bucketsAsync = ref.watch(statisticsBucketsProvider(_selectedRange));
+    final achievementsAsync = ref.watch(achievementsProvider);
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 2.h, horizontal: 4.w),
-          child: _hasData
-              ? RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  color: theme.colorScheme.primary,
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildHeader(theme),
-                            SizedBox(height: 2.h),
-                            Semantics(
-                              label:
-                                  'Today: 5 sessions, 12 day streak, 875 total focus minutes',
-                              child: SummaryCardsWidget(
-                                todaySessions: 5,
-                                currentStreak: 12,
-                                totalFocusMinutes: 875,
+          child: summaryAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stackTrace) => _ErrorState(message: '$error'),
+            data: (summary) {
+              return bucketsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, stackTrace) => _ErrorState(message: '$error'),
+                data: (buckets) {
+                  return achievementsAsync.when(
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, stackTrace) =>
+                        _ErrorState(message: '$error'),
+                    data: (achievements) {
+                      final hasData = summary.totalFocusMinutes > 0;
+                      if (!hasData) {
+                        return const EmptyStateWidget();
+                      }
+                      return RefreshIndicator(
+                        onRefresh: _onRefresh,
+                        color: theme.colorScheme.primary,
+                        child: CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildHeader(theme),
+                                  SizedBox(height: 2.h),
+                                  Semantics(
+                                    label:
+                                        'Today: ${summary.todaySessions} sessions, ${summary.currentStreak} day streak, ${summary.totalFocusMinutes} total focus minutes',
+                                    child: SummaryCardsWidget(
+                                      todaySessions: summary.todaySessions,
+                                      currentStreak: summary.currentStreak,
+                                      totalFocusMinutes:
+                                          summary.totalFocusMinutes,
+                                    ),
+                                  ),
+                                  SizedBox(height: 1.2.h),
+                                  Text(
+                                    'Tasks completed: ${summary.completedTasks} • On-time: ${summary.onTimeTasks}',
+                                    style: theme.textTheme.bodyMedium,
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Semantics(
+                                    label: 'Time period selector',
+                                    child: SegmentControlWidget(
+                                      selectedIndex: _selectedSegment,
+                                      onChanged: (index) {
+                                        setState(
+                                          () => _selectedSegment = index,
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    'Sessions Overview',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 1.h),
+                                  _buildSemanticBarChart(buckets),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    'Focus Time Trend',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 1.h),
+                                  LineChartWidget(data: buckets),
+                                  SizedBox(height: 2.h),
+                                  Semantics(
+                                    label:
+                                        'Weekly goal: ${summary.weeklyCompletedSessions} of ${summary.weeklyGoalSessions} sessions completed',
+                                    child: WeeklyGoalWidget(
+                                      completedSessions:
+                                          summary.weeklyCompletedSessions,
+                                      goalSessions: summary.weeklyGoalSessions,
+                                      onEditGoal: () =>
+                                          _editWeeklyGoal(summary.weeklyGoalSessions),
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    'Achievements',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                  SizedBox(height: 1.h),
+                                  AchievementBadgesWidget(
+                                    achievements: achievements,
+                                  ),
+                                  SizedBox(height: 2.h),
+                                ],
                               ),
                             ),
-                            SizedBox(height: 2.h),
-                            Semantics(
-                              label: 'Time period selector',
-                              child: SegmentControlWidget(
-                                selectedIndex: _selectedSegment,
-                                onChanged: (index) =>
-                                    setState(() => _selectedSegment = index),
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Sessions Overview',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 1.h),
-                            _buildSemanticBarChart(),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Focus Time Trend',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 1.h),
-                            LineChartWidget(
-                              data: _currentData,
-                              xAxisKey: _xAxisKey,
-                            ),
-                            SizedBox(height: 2.h),
-                            Semantics(
-                              label: 'Weekly goal: 35 of 40 sessions completed',
-                              child: WeeklyGoalWidget(
-                                completedSessions: 35,
-                                goalSessions: 40,
-                              ),
-                            ),
-                            SizedBox(height: 2.h),
-                            Text(
-                              'Achievements',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            SizedBox(height: 1.h),
-                            AchievementBadgesWidget(
-                              achievements: _achievements,
-                            ),
-                            SizedBox(height: 2.h),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              : EmptyStateWidget(),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSemanticBarChart() {
-    // Build a semantics description for each bar
-    final descriptions = _currentData
-        .map((d) {
-          final label = d[_xAxisKey] as String;
-          final sessions = d['sessions'] as int;
-          final minutes = d['focusMinutes'] as int;
-          return '$label: $sessions sessions, $minutes minutes';
-        })
+  Widget _buildSemanticBarChart(List<TimeBucketStat> data) {
+    final range = _selectedRange;
+    final descriptions = data
+        .map(
+          (d) =>
+              '${d.label}: ${d.sessions} sessions, ${d.focusMinutes} minutes',
+        )
         .join('. ');
 
     return Semantics(
-      label:
-          'Bar chart. $_selectedSegment == 0 ? Daily : (_selectedSegment == 1 ? Weekly : Monthly) sessions. $descriptions',
-      child: ExcludeSemantics(
-        child: BarChartWidget(data: _currentData, xAxisKey: _xAxisKey),
-      ),
+      label: 'Bar chart for ${_rangeLabel(range)} sessions. $descriptions',
+      child: ExcludeSemantics(child: BarChartWidget(data: data)),
     );
+  }
+
+  String _rangeLabel(StatsRange range) {
+    switch (range) {
+      case StatsRange.daily:
+        return 'daily';
+      case StatsRange.weekly:
+        return 'weekly';
+      case StatsRange.monthly:
+        return 'monthly';
+    }
   }
 
   Widget _buildHeader(ThemeData theme) {
@@ -237,6 +274,22 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        'Failed to load statistics: $message',
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }

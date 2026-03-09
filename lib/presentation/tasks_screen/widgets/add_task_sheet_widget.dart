@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/task_entity.dart';
 import 'package:sizer/sizer.dart';
 
 class AddTaskSheetWidget extends StatefulWidget {
-  final Map<String, dynamic>? existingTask;
-  final Function(Map<String, dynamic>) onSave;
+  final TaskEntity? existingTask;
+  final ValueChanged<TaskDraft> onSave;
 
   const AddTaskSheetWidget({
     super.key,
@@ -20,6 +21,9 @@ class _AddTaskSheetWidgetState extends State<AddTaskSheetWidget> {
   late TextEditingController _titleController;
   late TextEditingController _notesController;
   late int _estimatedSessions;
+  DateTime? _dueAt;
+  bool _reminderEnabled = false;
+  DateTime? _reminderAt;
   final _formKey = GlobalKey<FormState>();
 
   static const Color _accentRed = Color(0xFFE76F6F);
@@ -32,13 +36,15 @@ class _AddTaskSheetWidgetState extends State<AddTaskSheetWidget> {
   void initState() {
     super.initState();
     _titleController = TextEditingController(
-      text: widget.existingTask?['title'] as String? ?? '',
+      text: widget.existingTask?.title ?? '',
     );
     _notesController = TextEditingController(
-      text: widget.existingTask?['notes'] as String? ?? '',
+      text: widget.existingTask?.notes ?? '',
     );
-    _estimatedSessions =
-        widget.existingTask?['estimatedPomodoros'] as int? ?? 2;
+    _estimatedSessions = widget.existingTask?.estimatedPomodoros ?? 2;
+    _dueAt = widget.existingTask?.dueAt;
+    _reminderEnabled = widget.existingTask?.reminderEnabled ?? false;
+    _reminderAt = widget.existingTask?.reminderAt;
   }
 
   @override
@@ -50,13 +56,91 @@ class _AddTaskSheetWidgetState extends State<AddTaskSheetWidget> {
 
   void _save() {
     if (_formKey.currentState?.validate() ?? false) {
-      widget.onSave({
-        'title': _titleController.text.trim(),
-        'notes': _notesController.text.trim(),
-        'estimatedPomodoros': _estimatedSessions,
-      });
+      final normalizedReminderAt = _reminderEnabled
+          ? (_reminderAt ?? _dueAt ?? DateTime.now().add(const Duration(minutes: 1)))
+          : null;
+      widget.onSave(
+        TaskDraft(
+          title: _titleController.text.trim(),
+          notes: _notesController.text.trim(),
+          dueAt: _dueAt,
+          reminderEnabled: _reminderEnabled,
+          reminderAt: normalizedReminderAt,
+          estimatedPomodoros: _estimatedSessions,
+        ),
+      );
       Navigator.pop(context);
     }
+  }
+
+  Future<void> _pickDueDateTime() async {
+    final now = DateTime.now();
+    final initial = _dueAt ?? now.add(const Duration(hours: 1));
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    final picked = DateTime(
+      pickedDate.year,
+      pickedDate.month,
+      pickedDate.day,
+      pickedTime.hour,
+      pickedTime.minute,
+    );
+
+    setState(() {
+      _dueAt = picked;
+      if (_reminderEnabled && _reminderAt == null) {
+        _reminderAt = picked.subtract(const Duration(minutes: 10));
+      }
+    });
+  }
+
+  Future<void> _pickReminderDateTime() async {
+    final now = DateTime.now();
+    final initial = _reminderAt ?? _dueAt ?? now.add(const Duration(minutes: 30));
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (pickedDate == null || !mounted) return;
+
+    final pickedTime = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (pickedTime == null || !mounted) return;
+
+    setState(() {
+      _reminderAt = DateTime(
+        pickedDate.year,
+        pickedDate.month,
+        pickedDate.day,
+        pickedTime.hour,
+        pickedTime.minute,
+      );
+    });
+  }
+
+  String _formatDateTime(DateTime? value) {
+    if (value == null) return 'Not set';
+    final date =
+        '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
+    final time =
+        '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+    return '$date $time';
   }
 
   @override
@@ -268,6 +352,88 @@ class _AddTaskSheetWidgetState extends State<AddTaskSheetWidget> {
                         ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 1.6.h),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _cardBg,
+                  borderRadius: BorderRadius.circular(14.0),
+                ),
+                child: Column(
+                  children: [
+                    ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'Due date',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _secondaryText,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _formatDateTime(_dueAt),
+                        style: GoogleFonts.dmSans(fontSize: 13, color: _primaryText),
+                      ),
+                      trailing: TextButton(
+                        onPressed: _pickDueDateTime,
+                        child: const Text('Set'),
+                      ),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _reminderEnabled,
+                      title: Text(
+                        'One-shot reminder',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: _secondaryText,
+                        ),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _reminderEnabled = value;
+                          if (!_reminderEnabled) {
+                            _reminderAt = null;
+                          } else {
+                            _reminderAt ??=
+                                (_dueAt ?? DateTime.now().add(const Duration(minutes: 30)));
+                          }
+                        });
+                      },
+                    ),
+                    if (_reminderEnabled)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          'Reminder time',
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: _secondaryText,
+                          ),
+                        ),
+                        subtitle: Text(
+                          _formatDateTime(_reminderAt),
+                          style: GoogleFonts.dmSans(
+                            fontSize: 13,
+                            color: _primaryText,
+                          ),
+                        ),
+                        trailing: TextButton(
+                          onPressed: _pickReminderDateTime,
+                          child: const Text('Set'),
+                        ),
+                      ),
                   ],
                 ),
               ),

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/task_entity.dart';
 import 'package:sizer/sizer.dart';
 
 class TaskItemWidget extends StatefulWidget {
-  final Map<String, dynamic> task;
+  final TaskEntity task;
   final VoidCallback onToggleComplete;
   final VoidCallback onDelete;
   final VoidCallback onSetActive;
+  final VoidCallback onEdit;
 
   const TaskItemWidget({
     super.key,
@@ -15,6 +17,7 @@ class TaskItemWidget extends StatefulWidget {
     required this.onToggleComplete,
     required this.onDelete,
     required this.onSetActive,
+    required this.onEdit,
   });
 
   @override
@@ -43,7 +46,7 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
     _checkScale = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _checkController, curve: Curves.elasticOut),
     );
-    if (widget.task['isCompleted'] == true) {
+    if (widget.task.isCompleted) {
       _checkController.value = 1.0;
     }
   }
@@ -56,7 +59,7 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
 
   void _handleToggle() {
     HapticFeedback.lightImpact();
-    if (widget.task['isCompleted'] == true) {
+    if (widget.task.isCompleted) {
       _checkController.reverse();
     } else {
       _checkController.forward();
@@ -66,11 +69,13 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
 
   @override
   Widget build(BuildContext context) {
-    final isCompleted = widget.task['isCompleted'] == true;
-    final isActive = widget.task['isActive'] == true;
-    final estimated = (widget.task['estimatedPomodoros'] as int? ?? 1);
-    final completed = (widget.task['completedPomodoros'] as int? ?? 0);
+    final isCompleted = widget.task.isCompleted;
+    final isActive = widget.task.isActive;
+    final estimated = widget.task.estimatedPomodoros;
+    final completed = widget.task.completedPomodoros;
     final remaining = (estimated - completed).clamp(0, estimated);
+    final hasNotes = widget.task.notes.trim().isNotEmpty;
+    final hasDueAt = widget.task.dueAt != null;
 
     return GestureDetector(
       onHorizontalDragUpdate: (d) {
@@ -190,7 +195,7 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.task['title'] as String? ?? '',
+                            widget.task.title,
                             style: GoogleFonts.dmSans(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w500,
@@ -242,6 +247,30 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
                               ),
                             ],
                           ),
+                          if (hasNotes) ...[
+                            SizedBox(height: 0.4.h),
+                            Text(
+                              widget.task.notes.trim(),
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11.5,
+                                color: _secondaryText,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          if (hasDueAt) ...[
+                            SizedBox(height: 0.4.h),
+                            Text(
+                              'Due: ${_formatDateTime(widget.task.dueAt!)}',
+                              style: GoogleFonts.dmSans(
+                                fontSize: 11,
+                                color: const Color(0xFFE76F6F),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -254,6 +283,16 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
                           color: _accentRed,
                           shape: BoxShape.circle,
                         ),
+                      )
+                    else
+                      IconButton(
+                        tooltip: 'Edit task',
+                        iconSize: 18,
+                        onPressed: widget.onEdit,
+                        icon: const Icon(
+                          Icons.edit_outlined,
+                          color: Color(0xFF6F6F6F),
+                        ),
                       ),
                   ],
                 ),
@@ -263,5 +302,9 @@ class _TaskItemWidgetState extends State<TaskItemWidget>
         ],
       ),
     );
+  }
+
+  String _formatDateTime(DateTime value) {
+    return '${value.month}/${value.day} ${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
   }
 }

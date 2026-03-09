@@ -129,11 +129,30 @@ class _OnboardingSetupFlowScreenState extends State<OnboardingSetupFlowScreen>
               SizedBox(height: 4.h),
               // Step content
               Expanded(
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: _buildCurrentStep(),
+                child: AnimatedPadding(
+                  duration: const Duration(milliseconds: 220),
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: FadeTransition(
+                              opacity: _fadeAnimation,
+                              child: _buildCurrentStep(),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

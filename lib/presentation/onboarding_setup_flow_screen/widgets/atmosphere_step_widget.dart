@@ -1,26 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/catalog_item.dart';
+import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:sizer/sizer.dart';
 
-class AtmosphereStepWidget extends StatelessWidget {
-  final String selectedAtmosphere;
-  final ValueChanged<String> onAtmosphereSelected;
-
+class AtmosphereStepWidget extends ConsumerWidget {
   const AtmosphereStepWidget({
     super.key,
     required this.selectedAtmosphere,
     required this.onAtmosphereSelected,
   });
 
-  static const List<Map<String, String>> _atmospheres = [
-    {'name': 'Silent', 'emoji': '🤫', 'desc': 'Pure quiet focus'},
-    {'name': 'Rain', 'emoji': '🌧️', 'desc': 'Gentle rainfall sounds'},
-    {'name': 'Forest', 'emoji': '🌲', 'desc': 'Birdsong & rustling leaves'},
-    {'name': 'Cafe', 'emoji': '☕', 'desc': 'Soft ambient chatter'},
-  ];
+  final String selectedAtmosphere;
+  final ValueChanged<String> onAtmosphereSelected;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final atmospheres = ref.watch(catalogItemsProvider(CatalogType.atmosphere));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -53,25 +51,47 @@ class AtmosphereStepWidget extends StatelessWidget {
           ),
         ),
         SizedBox(height: 4.h),
-        ...List.generate(_atmospheres.length, (i) {
-          final item = _atmospheres[i];
-          return Padding(
-            padding: EdgeInsets.only(bottom: 2.h),
-            child: _buildAtmosphereCard(
-              item['name']!,
-              item['emoji']!,
-              item['desc']!,
-            ),
-          );
-        }),
+        atmospheres.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stackTrace) => Text(
+            'Failed to load atmospheres',
+            style: GoogleFonts.dmSans(color: const Color(0xFF6F6F6F)),
+          ),
+          data: (items) => Column(
+            children: items
+                .map(
+                  (item) => Padding(
+                    padding: EdgeInsets.only(bottom: 2.h),
+                    child: _AtmosphereCard(
+                      item: item,
+                      isSelected: selectedAtmosphere == item.value,
+                      onTap: () => onAtmosphereSelected(item.value),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
       ],
     );
   }
+}
 
-  Widget _buildAtmosphereCard(String name, String emoji, String description) {
-    final isSelected = selectedAtmosphere == name;
+class _AtmosphereCard extends StatelessWidget {
+  const _AtmosphereCard({
+    required this.item,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final CatalogItem item;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => onAtmosphereSelected(name),
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         padding: EdgeInsets.symmetric(horizontal: 4.w, vertical: 2.h),
@@ -104,7 +124,10 @@ class AtmosphereStepWidget extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 22)),
+                child: Text(
+                  item.emoji ?? '🌿',
+                  style: const TextStyle(fontSize: 22),
+                ),
               ),
             ),
             SizedBox(width: 3.w),
@@ -113,7 +136,7 @@ class AtmosphereStepWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    item.label,
                     style: GoogleFonts.dmSans(
                       fontSize: 13.sp,
                       fontWeight: FontWeight.w600,
@@ -121,7 +144,7 @@ class AtmosphereStepWidget extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    description,
+                    item.description ?? '',
                     style: GoogleFonts.dmSans(
                       fontSize: 10.sp,
                       fontWeight: FontWeight.w300,

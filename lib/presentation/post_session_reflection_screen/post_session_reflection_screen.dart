@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/catalog_item.dart';
 import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:sizer/sizer.dart';
 import './widgets/mood_chip_widget.dart';
@@ -21,14 +22,6 @@ class PostSessionReflectionScreen extends ConsumerStatefulWidget {
 class _PostSessionReflectionScreenState
     extends ConsumerState<PostSessionReflectionScreen>
     with TickerProviderStateMixin {
-  static const List<Map<String, String>> _moods = [
-    {'emoji': '🙂', 'label': 'Focused'},
-    {'emoji': '😌', 'label': 'Calm'},
-    {'emoji': '😐', 'label': 'Neutral'},
-    {'emoji': '😫', 'label': 'Distracted'},
-    {'emoji': '😴', 'label': 'Tired'},
-  ];
-
   String? _selectedMood;
   final TextEditingController _wentWellController = TextEditingController();
   final TextEditingController _distractedController = TextEditingController();
@@ -348,6 +341,7 @@ class _PostSessionReflectionScreenState
 
   @override
   Widget build(BuildContext context) {
+    final moodsAsync = ref.watch(catalogItemsProvider(CatalogType.mood));
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -412,24 +406,37 @@ class _PostSessionReflectionScreenState
                               ),
                             ),
                             SizedBox(height: 1.5.h),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: _moods.map((mood) {
-                                return MoodChipWidget(
-                                  emoji: mood['emoji']!,
-                                  label: mood['label']!,
-                                  isSelected: _selectedMood == mood['label'],
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedMood =
-                                          _selectedMood == mood['label']
-                                          ? null
-                                          : mood['label'];
-                                      _hasChanges = true;
-                                    });
-                                  },
-                                );
-                              }).toList(),
+                            moodsAsync.when(
+                              loading: () => const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              error: (error, stackTrace) => Text(
+                                'Unable to load moods',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: const Color(0xFF6F6F6F),
+                                ),
+                              ),
+                              data: (moods) => Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: moods.map((mood) {
+                                  return MoodChipWidget(
+                                    emoji: mood.emoji ?? '🙂',
+                                    label: mood.label,
+                                    isSelected: _selectedMood == mood.value,
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedMood =
+                                            _selectedMood == mood.value
+                                            ? null
+                                            : mood.value;
+                                        _hasChanges = true;
+                                      });
+                                    },
+                                  );
+                                }).toList(),
+                              ),
                             ),
 
                             SizedBox(height: 3.h),

@@ -1,36 +1,15 @@
 import 'dart:async';
-import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/catalog_item.dart';
 import 'package:pomodorofocus/state/app/data_providers.dart';
+import 'package:pomodorofocus/state/sound/mixer_controller.dart';
 import 'package:sizer/sizer.dart';
-import './widgets/sound_card_widget.dart';
-import './widgets/saved_mix_card_widget.dart';
 
-class SoundMix {
-  final String id;
-  final String name;
-  final Map<String, double> soundLevels;
-
-  SoundMix({required this.id, required this.name, required this.soundLevels});
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'name': name,
-    'soundLevels': soundLevels,
-  };
-
-  factory SoundMix.fromJson(Map<String, dynamic> json) => SoundMix(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    soundLevels: Map<String, double>.from(
-      (json['soundLevels'] as Map).map(
-        (k, v) => MapEntry(k as String, (v as num).toDouble()),
-      ),
-    ),
-  );
-}
+import 'widgets/saved_mix_card_widget.dart';
+import 'widgets/sound_card_widget.dart';
 
 class CustomSoundMixerScreen extends ConsumerStatefulWidget {
   const CustomSoundMixerScreen({super.key});
@@ -42,35 +21,15 @@ class CustomSoundMixerScreen extends ConsumerStatefulWidget {
 
 class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
     with TickerProviderStateMixin {
-  static const List<Map<String, dynamic>> _soundSources = [
-    {'name': 'Rain', 'icon': Icons.water_drop_rounded, 'key': 'rain'},
-    {'name': 'Forest', 'icon': Icons.forest_rounded, 'key': 'forest'},
-    {'name': 'Cafe', 'icon': Icons.local_cafe_rounded, 'key': 'cafe'},
-    {'name': 'White Noise', 'icon': Icons.waves_rounded, 'key': 'white_noise'},
-    {'name': 'Birdsong', 'icon': Icons.flutter_dash_rounded, 'key': 'birdsong'},
-    {
-      'name': 'Fireplace',
-      'icon': Icons.local_fire_department_rounded,
-      'key': 'fireplace',
-    },
-  ];
-
-  final Map<String, bool> _activeStates = {};
-  final Map<String, double> _volumes = {};
-  List<SoundMix> _savedMixes = [];
-  String? _activeMixId;
-
-  late AnimationController _saveCheckController;
-  late Animation<double> _saveCheckAnimation;
+  late final MixerController _mixerController;
+  late final AnimationController _saveCheckController;
+  late final Animation<double> _saveCheckAnimation;
   bool _showSaveCheck = false;
 
   @override
   void initState() {
     super.initState();
-    for (final source in _soundSources) {
-      _activeStates[source['key'] as String] = false;
-      _volumes[source['key'] as String] = 0.5;
-    }
+    _mixerController = ref.read(mixerControllerProvider);
     _saveCheckController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -79,79 +38,26 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
       parent: _saveCheckController,
       curve: Curves.easeInOut,
     );
-    _loadData();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_mixerController.attachMixerPreview());
+    });
   }
 
   @override
   void dispose() {
+    unawaited(_mixerController.detachMixerPreview());
     _saveCheckController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    final repository = ref.read(soundMixRepositoryProvider);
-    await repository.migrateFromPreferencesIfNeeded();
-    final mixes = await repository.fetchAll();
-
-    setState(() {
-      _savedMixes = mixes
-          .map(
-            (mix) => SoundMix(
-              id: mix.id,
-              name: mix.name,
-              soundLevels: Map<String, double>.from(
-                (jsonDecode(mix.levelsJson) as Map).map(
-                  (key, value) =>
-                      MapEntry(key as String, (value as num).toDouble()),
-                ),
-              ),
-            ),
-          )
-          .toList();
-      _activeMixId = mixes.where((mix) => mix.isActive).firstOrNull?.id;
-    });
-
-    if (_activeMixId != null) {
-      final activeMix = _savedMixes
-          .where((m) => m.id == _activeMixId)
-          .firstOrNull;
-      if (activeMix != null) {
-        setState(() {
-          for (final key in activeMix.soundLevels.keys) {
-            _volumes[key] = activeMix.soundLevels[key]!;
-            _activeStates[key] = activeMix.soundLevels[key]! > 0;
-          }
-        });
-      }
-    }
-  }
-
-  Future<void> _saveMixes() async {
-    final repository = ref.read(soundMixRepositoryProvider);
-    for (final mix in _savedMixes) {
-      await repository.upsert(
-        id: mix.id,
-        name: mix.name,
-        levels: mix.soundLevels,
-        isActive: mix.id == _activeMixId,
-      );
-    }
-    if (_activeMixId != null) {
-      await repository.setActive(_activeMixId!);
-    }
-  }
-
-  bool get _hasActiveSounds => _activeStates.values.any((active) => active);
-
   void _showSaveMixDialog() {
     final controller = TextEditingController();
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: const Color(0xFFF7F7F5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: EdgeInsets.all(6.w),
           child: Column(
@@ -219,12 +125,21 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
                   SizedBox(width: 2.w),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         final name = controller.text.trim();
-                        if (name.isNotEmpty) {
-                          Navigator.of(ctx).pop();
-                          _saveMix(name);
-                        }
+                        if (name.isEmpty) return;
+                        Navigator.of(ctx).pop();
+                        await ref.read(mixerControllerProvider).saveMix(name);
+                        if (!mounted) return;
+                        setState(() => _showSaveCheck = true);
+                        await _saveCheckController.forward();
+                        await Future<void>.delayed(
+                          const Duration(milliseconds: 800),
+                        );
+                        if (!mounted) return;
+                        await _saveCheckController.reverse();
+                        if (!mounted) return;
+                        setState(() => _showSaveCheck = false);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE76F6F),
@@ -253,66 +168,13 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
     );
   }
 
-  void _saveMix(String name) {
-    final currentLevels = <String, double>{};
-    for (final source in _soundSources) {
-      final key = source['key'] as String;
-      if (_activeStates[key] == true) {
-        currentLevels[key] = _volumes[key]!;
-      }
-    }
-    final mix = SoundMix(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      soundLevels: currentLevels,
-    );
-    setState(() {
-      _savedMixes.add(mix);
-      _activeMixId = mix.id;
-      _showSaveCheck = true;
-    });
-    _saveMixes();
-    _saveCheckController.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          _saveCheckController.reverse().then((_) {
-            if (mounted) setState(() => _showSaveCheck = false);
-          });
-        }
-      });
-    });
-  }
-
-  void _applyMix(SoundMix mix) {
-    setState(() {
-      _activeMixId = mix.id;
-      for (final source in _soundSources) {
-        final key = source['key'] as String;
-        _activeStates[key] = mix.soundLevels.containsKey(key);
-        _volumes[key] = mix.soundLevels[key] ?? 0.5;
-      }
-    });
-    _saveMixes();
-  }
-
-  void _deleteMix(String mixId) {
-    setState(() {
-      _savedMixes.removeWhere((m) => m.id == mixId);
-      if (_activeMixId == mixId) _activeMixId = null;
-    });
-    unawaited(ref.read(soundMixRepositoryProvider).delete(mixId));
-    _saveMixes();
-  }
-
-  void _showEditMixDialog(SoundMix mix) {
+  void _showEditMixDialog(SavedSoundMix mix) {
     final controller = TextEditingController(text: mix.name);
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => Dialog(
         backgroundColor: const Color(0xFFF7F7F5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: Padding(
           padding: EdgeInsets.all(6.w),
           child: Column(
@@ -366,24 +228,13 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
                   SizedBox(width: 2.w),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         final name = controller.text.trim();
-                        if (name.isNotEmpty) {
-                          Navigator.of(ctx).pop();
-                          setState(() {
-                            final idx = _savedMixes.indexWhere(
-                              (m) => m.id == mix.id,
-                            );
-                            if (idx != -1) {
-                              _savedMixes[idx] = SoundMix(
-                                id: mix.id,
-                                name: name,
-                                soundLevels: mix.soundLevels,
-                              );
-                            }
-                          });
-                          _saveMixes();
-                        }
+                        if (name.isEmpty) return;
+                        Navigator.of(ctx).pop();
+                        await ref
+                            .read(mixerControllerProvider)
+                            .renameMix(mix.id, name);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFE76F6F),
@@ -412,8 +263,32 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
     );
   }
 
+  IconData _iconFromToken(String? token) {
+    switch (token) {
+      case 'water_drop_rounded':
+        return Icons.water_drop_rounded;
+      case 'forest_rounded':
+        return Icons.forest_rounded;
+      case 'local_cafe_rounded':
+        return Icons.local_cafe_rounded;
+      case 'waves_rounded':
+        return Icons.waves_rounded;
+      case 'flutter_dash_rounded':
+        return Icons.flutter_dash_rounded;
+      case 'local_fire_department_rounded':
+        return Icons.local_fire_department_rounded;
+      default:
+        return Icons.music_note_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final soundsAsync = ref.watch(
+      catalogItemsProvider(CatalogType.soundSource),
+    );
+    final mixer = ref.watch(mixerControllerProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F5),
       appBar: AppBar(
@@ -450,136 +325,192 @@ class _CustomSoundMixerScreenState extends ConsumerState<CustomSoundMixerScreen>
         ),
         titleSpacing: 0,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Sound source cards
-                ...List.generate(_soundSources.length, (index) {
-                  final source = _soundSources[index];
-                  final key = source['key'] as String;
-                  return SoundCardWidget(
-                    soundName: source['name'] as String,
-                    soundIcon: source['icon'] as IconData,
-                    isActive: _activeStates[key] ?? false,
-                    volume: _volumes[key] ?? 0.5,
-                    onToggle: (val) {
-                      setState(() => _activeStates[key] = val);
-                    },
-                    onVolumeChanged: (val) {
-                      setState(() => _volumes[key] = val);
-                    },
-                  );
-                }),
-
-                SizedBox(height: 2.h),
-
-                // Save Mix button
-                if (_hasActiveSounds)
-                  AnimatedOpacity(
-                    opacity: _hasActiveSounds ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 350),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: AnimatedBuilder(
-                        animation: _saveCheckAnimation,
-                        builder: (context, child) {
-                          return ElevatedButton(
-                            onPressed: _showSaveCheck
-                                ? null
-                                : _showSaveMixDialog,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE76F6F),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(50),
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 0,
-                            ),
-                            child: _showSaveCheck
-                                ? Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Icon(
-                                        Icons.check_circle_rounded,
-                                        size: 18,
-                                        color: Colors.white,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Mix Saved!',
+      body: soundsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => const Center(child: Text('Unable to load sounds')),
+        data: (soundSources) {
+          final sourceByValue = {
+            for (final source in soundSources) source.value: source,
+          };
+          return Stack(
+            children: [
+              SingleChildScrollView(
+                padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 2.h),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...soundSources.map((source) {
+                      final key = source.value;
+                      final isEvent = mixer.isEventSound(key);
+                      return SoundCardWidget(
+                        soundName: source.label,
+                        soundIcon: _iconFromToken(source.iconToken),
+                        isActive: mixer.isEnabled(key),
+                        volume: mixer.volumeFor(key),
+                        showDensityControl: isEvent,
+                        density: mixer.densityFor(key),
+                        onToggle: (val) async {
+                          final message = await ref
+                              .read(mixerControllerProvider)
+                              .toggleSound(key, val);
+                          if (message != null && context.mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(message)));
+                          }
+                        },
+                        onVolumeChanged: (val) {
+                          unawaited(
+                            ref
+                                .read(mixerControllerProvider)
+                                .setVolume(key, val),
+                          );
+                        },
+                        onSolo: () async {
+                          final message = await ref
+                              .read(mixerControllerProvider)
+                              .soloSound(key);
+                          if (message != null && context.mounted) {
+                            ScaffoldMessenger.of(
+                              context,
+                            ).showSnackBar(SnackBar(content: Text(message)));
+                          }
+                        },
+                        onDensityChanged: isEvent
+                            ? (density) {
+                                unawaited(
+                                  ref
+                                      .read(mixerControllerProvider)
+                                      .setEventDensity(key, density),
+                                );
+                              }
+                            : null,
+                      );
+                    }),
+                    SizedBox(height: 2.h),
+                    if (mixer.hasActiveSounds && !mixer.isLoading)
+                      AnimatedOpacity(
+                        opacity: mixer.hasActiveSounds ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 350),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: AnimatedBuilder(
+                            animation: _saveCheckAnimation,
+                            builder: (context, child) {
+                              return ElevatedButton(
+                                onPressed: _showSaveCheck
+                                    ? null
+                                    : _showSaveMixDialog,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE76F6F),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(50),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _showSaveCheck
+                                    ? Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 18,
+                                            color: Colors.white,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Mix Saved!',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Text(
+                                        'Save Mix',
                                         style: GoogleFonts.inter(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w500,
                                         ),
                                       ),
-                                    ],
-                                  )
-                                : Text(
-                                    'Save Mix',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                          );
-                        },
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    SizedBox(height: 3.h),
+                    if (mixer.savedMixes.isNotEmpty) ...[
+                      Text(
+                        'Saved Atmospheres',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: const Color(0xFF2F2F2F),
+                        ),
+                      ),
+                      SizedBox(height: 1.5.h),
+                      ...mixer.savedMixes.map((mix) {
+                        final displayLevels = <String, double>{};
+                        for (final soundId in mix.payload.enabledSoundIds) {
+                          final source = sourceByValue[soundId];
+                          if (source == null) continue;
+                          displayLevels[source.label] =
+                              mix.payload.levels[soundId] ?? 0.0;
+                        }
+                        return SavedMixCardWidget(
+                          mixName: mix.name,
+                          soundLevels: displayLevels,
+                          isActive: mixer.activeMixId == mix.id,
+                          onApply: () async {
+                            final message = await ref
+                                .read(mixerControllerProvider)
+                                .applySavedMix(mix.id);
+                            if (message != null && context.mounted) {
+                              ScaffoldMessenger.of(
+                                context,
+                              ).showSnackBar(SnackBar(content: Text(message)));
+                            }
+                          },
+                          onEdit: () => _showEditMixDialog(mix),
+                          onDelete: () {
+                            unawaited(
+                              ref
+                                  .read(mixerControllerProvider)
+                                  .deleteMix(mix.id),
+                            );
+                          },
+                        );
+                      }),
+                    ],
+                    SizedBox(height: 4.h),
+                  ],
+                ),
+              ),
+              if (!mixer.hasActiveSounds && mixer.savedMixes.isEmpty)
+                Positioned(
+                  bottom: 4.h,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Text(
+                      'Toggle a sound to begin mixing',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w300,
+                        color: const Color(0xFF6F6F6F),
                       ),
                     ),
                   ),
-
-                SizedBox(height: 3.h),
-
-                // Saved Atmospheres section
-                if (_savedMixes.isNotEmpty) ...[
-                  Text(
-                    'Saved Atmospheres',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF2F2F2F),
-                    ),
-                  ),
-                  SizedBox(height: 1.5.h),
-                  ..._savedMixes.map(
-                    (mix) => SavedMixCardWidget(
-                      mixName: mix.name,
-                      soundLevels: mix.soundLevels,
-                      isActive: _activeMixId == mix.id,
-                      onApply: () => _applyMix(mix),
-                      onEdit: () => _showEditMixDialog(mix),
-                      onDelete: () => _deleteMix(mix.id),
-                    ),
-                  ),
-                ],
-
-                SizedBox(height: 4.h),
-              ],
-            ),
-          ),
-
-          // No active sounds hint
-          if (!_hasActiveSounds && _savedMixes.isEmpty)
-            Positioned(
-              bottom: 4.h,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Text(
-                  'Toggle a sound to begin mixing 🎧',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w300,
-                    color: const Color(0xFF6F6F6F),
-                  ),
                 ),
-              ),
-            ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

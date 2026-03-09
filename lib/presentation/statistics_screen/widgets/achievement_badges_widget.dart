@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:pomodorofocus/data/models/statistics_models.dart';
 import 'package:sizer/sizer.dart';
 
 import '../../../core/app_export.dart';
 import '../../../widgets/custom_icon_widget.dart';
 
 class AchievementBadgesWidget extends StatefulWidget {
-  final List<Map<String, dynamic>> achievements;
+  final List<AchievementView> achievements;
 
   const AchievementBadgesWidget({super.key, required this.achievements});
 
@@ -54,8 +55,8 @@ class _AchievementBadgesWidgetState extends State<AchievementBadgesWidget>
       itemCount: widget.achievements.length,
       itemBuilder: (context, index) {
         final achievement = widget.achievements[index];
-        final isUnlocked = achievement['unlocked'] as bool;
-        final color = Color(achievement['color'] as int);
+        final isUnlocked = achievement.unlocked;
+        final color = Color(achievement.colorHex);
 
         return ScaleTransition(
           scale: _scaleAnim,
@@ -75,7 +76,7 @@ class _AchievementBadgesWidgetState extends State<AchievementBadgesWidget>
             child: Row(
               children: [
                 CustomIconWidget(
-                  iconName: achievement['icon'] as String,
+                  iconName: achievement.iconToken,
                   color: isUnlocked
                       ? color
                       : theme.colorScheme.onSurfaceVariant.withValues(
@@ -90,7 +91,7 @@ class _AchievementBadgesWidgetState extends State<AchievementBadgesWidget>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        achievement['title'] as String,
+                        achievement.title,
                         style: theme.textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isUnlocked
@@ -104,7 +105,7 @@ class _AchievementBadgesWidgetState extends State<AchievementBadgesWidget>
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        achievement['description'] as String,
+                        achievement.description,
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: isUnlocked
                               ? theme.colorScheme.onSurfaceVariant

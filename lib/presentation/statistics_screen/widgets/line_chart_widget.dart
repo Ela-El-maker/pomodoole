@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pomodorofocus/data/models/statistics_models.dart';
 import 'package:sizer/sizer.dart';
 
 class LineChartWidget extends StatefulWidget {
-  final List<Map<String, dynamic>> data;
-  final String xAxisKey;
+  final List<TimeBucketStat> data;
 
-  const LineChartWidget({
-    super.key,
-    required this.data,
-    required this.xAxisKey,
-  });
+  const LineChartWidget({super.key, required this.data});
 
   @override
   State<LineChartWidget> createState() => _LineChartWidgetState();
@@ -20,11 +16,11 @@ class _LineChartWidgetState extends State<LineChartWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final maxY =
-        widget.data
-            .map((e) => (e['focusMinutes'] as int).toDouble())
-            .reduce((a, b) => a > b ? a : b) +
-        50;
+    final maxMinutes = widget.data.fold<int>(
+      0,
+      (max, stat) => stat.focusMinutes > max ? stat.focusMinutes : max,
+    );
+    final maxY = (maxMinutes + 50).toDouble();
 
     return Container(
       width: double.infinity,
@@ -56,7 +52,7 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                   return touchedSpots.map((spot) {
                     final index = spot.x.toInt();
                     final label = index < widget.data.length
-                        ? widget.data[index][widget.xAxisKey] as String
+                        ? widget.data[index].label
                         : '';
                     return LineTooltipItem(
                       '$label\n${spot.y.toInt()} min',
@@ -83,7 +79,7 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        widget.data[index][widget.xAxisKey] as String,
+                        widget.data[index].label,
                         style: TextStyle(
                           fontSize: 9.sp,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -129,7 +125,7 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                   widget.data.length,
                   (index) => FlSpot(
                     index.toDouble(),
-                    (widget.data[index]['focusMinutes'] as int).toDouble(),
+                    widget.data[index].focusMinutes.toDouble(),
                   ),
                 ),
                 isCurved: true,

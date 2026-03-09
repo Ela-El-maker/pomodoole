@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pomodorofocus/data/db/app_database.dart';
+import 'package:pomodorofocus/data/models/task_entity.dart';
+import 'package:pomodorofocus/services/notification_service.dart';
 import 'package:pomodorofocus/state/app/data_providers.dart';
 import 'package:pomodorofocus/state/tasks/task_providers.dart';
 import 'package:sizer/sizer.dart';
@@ -26,62 +27,12 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   static const Color _primaryText = Color(0xFF2F2F2F);
   static const Color _secondaryText = Color(0xFF6F6F6F);
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _seedIfEmpty();
-    });
-  }
-
-  Future<void> _seedIfEmpty() async {
-    final repository = ref.read(tasksRepositoryProvider);
-    final existing = await repository.fetchAll();
-    if (existing.isNotEmpty) return;
-
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await repository.upsert(
-      id: '${now + 1}',
-      title: 'Study Biology',
-      notes: 'Chapter 5 - Cell division and mitosis',
-      estimatedPomodoros: 3,
-      completedPomodoros: 1,
-      isCompleted: false,
-      isActive: true,
-    );
-    await repository.upsert(
-      id: '${now + 2}',
-      title: 'Write Essay',
-      notes: 'Introduction and first two paragraphs',
-      estimatedPomodoros: 2,
-      completedPomodoros: 0,
-    );
-    await repository.upsert(
-      id: '${now + 3}',
-      title: 'Review Pull Requests',
-      estimatedPomodoros: 1,
-      completedPomodoros: 1,
-      isCompleted: true,
-    );
-  }
-
-  Map<String, dynamic> _toTaskMap(TasksTableData task) {
-    return {
-      'id': task.id,
-      'title': task.title,
-      'notes': task.notes,
-      'estimatedPomodoros': task.estimatedPomodoros,
-      'completedPomodoros': task.completedPomodoros,
-      'isCompleted': task.isCompleted,
-      'isActive': task.isActive,
-    };
-  }
-
   Future<void> _onRefresh() async {
     await Future.delayed(const Duration(milliseconds: 600));
+    ref.invalidate(tasksStreamProvider);
   }
 
-  void _showAddTaskSheet({Map<String, dynamic>? existingTask}) {
+  void _showAddTaskSheet({TaskEntity? existingTask}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -90,19 +41,32 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         existingTask: existingTask,
         onSave: (task) async {
           final repository = ref.read(tasksRepositoryProvider);
+          final notifications = NotificationService();
           final id =
-              (existingTask?['id'] as String?) ??
+              existingTask?.id ??
               DateTime.now().millisecondsSinceEpoch.toString();
           await repository.upsert(
             id: id,
-            title: task['title'] as String? ?? '',
-            notes: task['notes'] as String? ?? '',
-            estimatedPomodoros: task['estimatedPomodoros'] as int? ?? 1,
-            completedPomodoros:
-                existingTask?['completedPomodoros'] as int? ?? 0,
-            isCompleted: existingTask?['isCompleted'] as bool? ?? false,
-            isActive: existingTask?['isActive'] as bool? ?? false,
+            title: task.title,
+            notes: task.notes,
+            dueAt: task.dueAt,
+            reminderAt: task.reminderAt,
+            reminderEnabled: task.reminderEnabled,
+            estimatedPomodoros: task.estimatedPomodoros,
+            completedPomodoros: existingTask?.completedPomodoros ?? 0,
+            isCompleted: existingTask?.isCompleted ?? false,
+            isActive: existingTask?.isActive ?? false,
           );
+          if (task.reminderEnabled && task.reminderAt != null) {
+            await notifications.scheduleTaskReminder(
+              taskId: id,
+              taskTitle: task.title,
+              scheduledAtLocal: task.reminderAt!,
+              notes: task.notes,
+            );
+          } else {
+            await notifications.cancelTaskReminder(id);
+          }
         },
       ),
     );
@@ -111,6 +75,7 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
   Future<void> _deleteTask(String id) async {
     unawaited(HapticFeedback.mediumImpact());
     await ref.read(tasksRepositoryProvider).delete(id);
+    await NotificationService().cancelTaskReminder(id);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -126,24 +91,36 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
     );
   }
 
-  Future<void> _toggleComplete(Map<String, dynamic> task) async {
+  Future<void> _toggleComplete(TaskEntity task) async {
     unawaited(HapticFeedback.lightImpact());
+    final nextCompleted = !task.isCompleted;
     await ref
         .read(tasksRepositoryProvider)
         .upsert(
-          id: task['id'] as String,
-          title: task['title'] as String,
-          notes: task['notes'] as String? ?? '',
-          estimatedPomodoros: task['estimatedPomodoros'] as int? ?? 1,
-          completedPomodoros: task['completedPomodoros'] as int? ?? 0,
-          isCompleted: !(task['isCompleted'] as bool? ?? false),
-          isActive: (task['isCompleted'] as bool? ?? false)
-              ? false
-              : (task['isActive'] as bool? ?? false),
+          id: task.id,
+          title: task.title,
+          notes: task.notes,
+          dueAt: task.dueAt,
+          reminderAt: task.reminderAt,
+          reminderEnabled: task.reminderEnabled,
+          estimatedPomodoros: task.estimatedPomodoros,
+          completedPomodoros: task.completedPomodoros,
+          isCompleted: nextCompleted,
+          isActive: nextCompleted ? false : task.isActive,
         );
+    if (nextCompleted) {
+      await NotificationService().cancelTaskReminder(task.id);
+    } else if (task.reminderEnabled && task.reminderAt != null) {
+      await NotificationService().scheduleTaskReminder(
+        taskId: task.id,
+        taskTitle: task.title,
+        scheduledAtLocal: task.reminderAt!,
+        notes: task.notes,
+      );
+    }
   }
 
-  Future<void> _setActiveTask(Map<String, dynamic> selectedTask) async {
+  Future<void> _setActiveTask(TaskEntity selectedTask) async {
     unawaited(HapticFeedback.lightImpact());
     final repository = ref.read(tasksRepositoryProvider);
     final all = await repository.fetchAll();
@@ -152,10 +129,13 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
         id: task.id,
         title: task.title,
         notes: task.notes,
+        dueAt: task.dueAt,
+        reminderAt: task.reminderAt,
+        reminderEnabled: task.reminderEnabled,
         estimatedPomodoros: task.estimatedPomodoros,
         completedPomodoros: task.completedPomodoros,
         isCompleted: task.isCompleted,
-        isActive: task.id == selectedTask['id'] && !task.isActive,
+        isActive: task.id == selectedTask.id && !task.isActive,
       );
     }
   }
@@ -169,14 +149,9 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, stackTrace) =>
           Scaffold(body: Center(child: Text('Failed to load tasks: $error'))),
-      data: (tasksData) {
-        final tasks = tasksData.map(_toTaskMap).toList();
-        final activeTasks = tasks
-            .where((t) => t['isCompleted'] != true)
-            .toList();
-        final completedTasks = tasks
-            .where((t) => t['isCompleted'] == true)
-            .toList();
+      data: (tasks) {
+        final activeTasks = tasks.where((t) => !t.isCompleted).toList();
+        final completedTasks = tasks.where((t) => t.isCompleted).toList();
         final hasAnyTask = tasks.isNotEmpty;
 
         return Scaffold(
@@ -235,9 +210,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                       task: task,
                                       onToggleComplete: () =>
                                           _toggleComplete(task),
-                                      onDelete: () =>
-                                          _deleteTask(task['id'] as String),
+                                      onDelete: () => _deleteTask(task.id),
                                       onSetActive: () => _setActiveTask(task),
+                                      onEdit: () =>
+                                          _showAddTaskSheet(existingTask: task),
                                     ),
                                   ),
                                 ),
@@ -290,9 +266,10 @@ class _TasksScreenState extends ConsumerState<TasksScreen> {
                                         task: task,
                                         onToggleComplete: () =>
                                             _toggleComplete(task),
-                                        onDelete: () =>
-                                            _deleteTask(task['id'] as String),
+                                        onDelete: () => _deleteTask(task.id),
                                         onSetActive: () {},
+                                        onEdit: () =>
+                                            _showAddTaskSheet(existingTask: task),
                                       ),
                                     ),
                                   ),

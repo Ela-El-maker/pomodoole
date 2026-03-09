@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:pomodorofocus/data/models/statistics_models.dart';
 import 'package:sizer/sizer.dart';
 
 class BarChartWidget extends StatefulWidget {
-  final List<Map<String, dynamic>> data;
-  final String xAxisKey;
+  final List<TimeBucketStat> data;
 
-  const BarChartWidget({super.key, required this.data, required this.xAxisKey});
+  const BarChartWidget({super.key, required this.data});
 
   @override
   State<BarChartWidget> createState() => _BarChartWidgetState();
@@ -18,11 +18,11 @@ class _BarChartWidgetState extends State<BarChartWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final maxY =
-        widget.data
-            .map((e) => (e['sessions'] as int).toDouble())
-            .reduce((a, b) => a > b ? a : b) +
-        2;
+    final maxSessions = widget.data.fold<int>(
+      0,
+      (max, stat) => stat.sessions > max ? stat.sessions : max,
+    );
+    final maxY = (maxSessions + 2).toDouble();
 
     return Container(
       width: double.infinity,
@@ -51,7 +51,7 @@ class _BarChartWidgetState extends State<BarChartWidget> {
                 ),
                 getTooltipItem: (group, groupIndex, rod, rodIndex) {
                   return BarTooltipItem(
-                    '${widget.data[groupIndex][widget.xAxisKey]}\n${rod.toY.toInt()} sessions',
+                    '${widget.data[groupIndex].label}\n${rod.toY.toInt()} sessions',
                     TextStyle(
                       color: theme.colorScheme.onPrimary,
                       fontSize: 10,
@@ -79,7 +79,7 @@ class _BarChartWidgetState extends State<BarChartWidget> {
                     return Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        widget.data[index][widget.xAxisKey] as String,
+                        widget.data[index].label,
                         style: TextStyle(
                           fontSize: 9.sp,
                           color: theme.colorScheme.onSurfaceVariant,
@@ -126,7 +126,7 @@ class _BarChartWidgetState extends State<BarChartWidget> {
                 x: index,
                 barRods: [
                   BarChartRodData(
-                    toY: (widget.data[index]['sessions'] as int).toDouble(),
+                    toY: widget.data[index].sessions.toDouble(),
                     color: isTouched
                         ? theme.colorScheme.tertiary
                         : theme.colorScheme.primary,

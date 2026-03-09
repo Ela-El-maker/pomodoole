@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pomodorofocus/data/models/sound_models.dart';
 import 'package:sizer/sizer.dart';
 
 class SoundCardWidget extends StatefulWidget {
@@ -9,6 +10,10 @@ class SoundCardWidget extends StatefulWidget {
   final double volume;
   final ValueChanged<bool> onToggle;
   final ValueChanged<double> onVolumeChanged;
+  final VoidCallback onSolo;
+  final bool showDensityControl;
+  final EventDensity density;
+  final ValueChanged<EventDensity>? onDensityChanged;
 
   const SoundCardWidget({
     super.key,
@@ -18,6 +23,10 @@ class SoundCardWidget extends StatefulWidget {
     required this.volume,
     required this.onToggle,
     required this.onVolumeChanged,
+    required this.onSolo,
+    this.showDensityControl = false,
+    this.density = EventDensity.medium,
+    this.onDensityChanged,
   });
 
   @override
@@ -127,6 +136,10 @@ class _SoundCardWidgetState extends State<SoundCardWidget>
                         ),
                       ),
                     ),
+                    TextButton(
+                      onPressed: widget.onSolo,
+                      child: const Text('Solo'),
+                    ),
                     Switch(
                       value: widget.isActive,
                       onChanged: widget.onToggle,
@@ -179,6 +192,30 @@ class _SoundCardWidgetState extends State<SoundCardWidget>
                       ),
                     ],
                   ),
+                  if (widget.showDensityControl &&
+                      widget.onDensityChanged != null) ...[
+                    SizedBox(height: 0.6.h),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wrap(
+                        spacing: 8,
+                        children: EventDensity.values
+                            .map(
+                              (density) => ChoiceChip(
+                                label: Text(switch (density) {
+                                  EventDensity.low => 'Low',
+                                  EventDensity.medium => 'Medium',
+                                  EventDensity.high => 'High',
+                                }),
+                                selected: widget.density == density,
+                                onSelected: (_) =>
+                                    widget.onDensityChanged?.call(density),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

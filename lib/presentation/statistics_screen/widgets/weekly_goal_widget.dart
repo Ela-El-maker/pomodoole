@@ -5,11 +5,13 @@ import 'package:sizer/sizer.dart';
 class WeeklyGoalWidget extends StatelessWidget {
   final int completedSessions;
   final int goalSessions;
+  final VoidCallback? onEditGoal;
 
   const WeeklyGoalWidget({
     super.key,
     required this.completedSessions,
     required this.goalSessions,
+    this.onEditGoal,
   });
 
   @override
@@ -67,11 +69,22 @@ class WeeklyGoalWidget extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Weekly Goal',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Weekly Goal',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (onEditGoal != null)
+                      IconButton(
+                        onPressed: onEditGoal,
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        tooltip: 'Edit weekly goal',
+                      ),
+                  ],
                 ),
                 SizedBox(height: 0.5.h),
                 Text(

@@ -256,7 +256,7 @@ class _FocusScreenState extends State<FocusScreen>
           ),
           GestureDetector(
             onTap: () {
-              context.push(AppRoutes.taskManagement);
+              context.push(AppRoutes.tasksScreen);
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
