@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pomodorofocus/data/db/app_database.dart';
+import 'package:pomodorofocus/data/models/sound_models.dart';
 import 'package:pomodorofocus/data/repositories/reflections_repository.dart';
 import 'package:pomodorofocus/data/repositories/session_history_repository.dart';
 import 'package:pomodorofocus/data/repositories/sound_mix_repository.dart';
@@ -21,6 +22,9 @@ void main() {
       id: 'task-1',
       title: 'Deep Work',
       notes: 'Morning block',
+      dueAt: DateTime(2026, 3, 15, 9),
+      reminderAt: DateTime(2026, 3, 15, 8, 45),
+      reminderEnabled: true,
       estimatedPomodoros: 4,
       completedPomodoros: 1,
       isActive: true,
@@ -31,47 +35,55 @@ void main() {
     expect(watched.first.title, 'Deep Work');
     expect(watched.first.notes, 'Morning block');
     expect(watched.first.isActive, isTrue);
+    expect(watched.first.reminderEnabled, isTrue);
+    expect(watched.first.dueAt, DateTime(2026, 3, 15, 9));
 
     final fetched = await repo.fetchAll();
     expect(fetched, hasLength(1));
+    expect(fetched.first.reminderAt, DateTime(2026, 3, 15, 8, 45));
 
     final deletedCount = await repo.delete('task-1');
     expect(deletedCount, 1);
     expect(await repo.fetchAll(), isEmpty);
   });
 
-  test('session history and reflections repositories persist records', () async {
-    final db = AppDatabase(NativeDatabase.memory());
-    addTearDown(() => db.close());
+  test(
+    'session history and reflections repositories persist records',
+    () async {
+      final db = AppDatabase(NativeDatabase.memory());
+      addTearDown(() => db.close());
 
-    final history = SessionHistoryRepository(db);
-    final reflections = ReflectionsRepository(db);
+      final history = SessionHistoryRepository(db);
+      final reflections = ReflectionsRepository(db);
 
-    await history.addEntry(
-      sessionType: 'Focus',
-      durationSeconds: 1500,
-      completed: true,
-    );
+      await history.addEntry(
+        sessionType: 'Focus',
+        taskId: 'task-1',
+        durationSeconds: 1500,
+        completed: true,
+      );
 
-    await reflections.addReflection(
-      mood: 'Calm',
-      wentWell: 'Stayed on task',
-      distractedBy: 'Phone',
-      nextFocus: 'Start writing immediately',
-      notes: 'Good momentum',
-    );
+      await reflections.addReflection(
+        mood: 'Calm',
+        wentWell: 'Stayed on task',
+        distractedBy: 'Phone',
+        nextFocus: 'Start writing immediately',
+        notes: 'Good momentum',
+      );
 
-    final historyRows = await db.select(db.sessionHistoryTable).get();
-    expect(historyRows, hasLength(1));
-    expect(historyRows.first.sessionType, 'Focus');
-    expect(historyRows.first.durationSeconds, 1500);
-    expect(historyRows.first.completed, isTrue);
+      final historyRows = await db.select(db.sessionHistoryTable).get();
+      expect(historyRows, hasLength(1));
+      expect(historyRows.first.sessionType, 'Focus');
+      expect(historyRows.first.taskId, 'task-1');
+      expect(historyRows.first.durationSeconds, 1500);
+      expect(historyRows.first.completed, isTrue);
 
-    final reflectionRows = await db.select(db.reflectionsTable).get();
-    expect(reflectionRows, hasLength(1));
-    expect(reflectionRows.first.mood, 'Calm');
-    expect(reflectionRows.first.nextFocus, 'Start writing immediately');
-  });
+      final reflectionRows = await db.select(db.reflectionsTable).get();
+      expect(reflectionRows, hasLength(1));
+      expect(reflectionRows.first.mood, 'Calm');
+      expect(reflectionRows.first.nextFocus, 'Start writing immediately');
+    },
+  );
 
   test('sound mix repository upsert, activate, fetch and delete', () async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
@@ -100,6 +112,13 @@ void main() {
     expect(mixes, hasLength(2));
     expect(mixes.where((m) => m.isActive), hasLength(1));
     expect(mixes.firstWhere((m) => m.isActive).id, 'mix-2');
+
+    final activePayload = SoundMixPayload.fromStoredJson(
+      mixes.firstWhere((m) => m.id == 'mix-2').levelsJson,
+    );
+    expect(activePayload.version, SoundMixPayload.currentVersion);
+    expect(activePayload.levels['birds'], 0.8);
+    expect(activePayload.enabledSoundIds, contains('birds'));
 
     final removed = await repo.delete('mix-1');
     expect(removed, 1);

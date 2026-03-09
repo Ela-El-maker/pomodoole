@@ -2,8 +2,10 @@ import 'package:drift/drift.dart' as drift;
 import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pomodorofocus/core/monitoring/app_logger.dart';
 import 'package:pomodorofocus/data/db/app_database.dart';
 import 'package:pomodorofocus/data/repositories/session_history_repository.dart';
+import 'package:pomodorofocus/data/repositories/tasks_repository.dart';
 import 'package:pomodorofocus/services/haptic_service.dart';
 import 'package:pomodorofocus/services/home_widget_service.dart';
 import 'package:pomodorofocus/services/notification_service.dart';
@@ -65,6 +67,8 @@ void main() {
         homeWidgetService: HomeWidgetService(),
         hapticService: HapticService(),
         sessionHistoryRepository: SessionHistoryRepository(database),
+        tasksRepository: TasksRepository(database),
+        logger: const AppLogger(),
       );
 
       await controller.initialize();
@@ -114,6 +118,8 @@ void main() {
       homeWidgetService: HomeWidgetService(),
       hapticService: HapticService(),
       sessionHistoryRepository: SessionHistoryRepository(database),
+      tasksRepository: TasksRepository(database),
+      logger: const AppLogger(),
     );
 
     await controller.initialize();
@@ -153,6 +159,8 @@ void main() {
       homeWidgetService: HomeWidgetService(),
       hapticService: HapticService(),
       sessionHistoryRepository: SessionHistoryRepository(database),
+      tasksRepository: TasksRepository(database),
+      logger: const AppLogger(),
     );
 
     await controller.initialize();
@@ -190,6 +198,8 @@ void main() {
       homeWidgetService: HomeWidgetService(),
       hapticService: HapticService(),
       sessionHistoryRepository: SessionHistoryRepository(database),
+      tasksRepository: TasksRepository(database),
+      logger: const AppLogger(),
     );
 
     await controller.initialize();
@@ -237,6 +247,8 @@ void main() {
       homeWidgetService: HomeWidgetService(),
       hapticService: HapticService(),
       sessionHistoryRepository: SessionHistoryRepository(databaseA),
+      tasksRepository: TasksRepository(databaseA),
+      logger: const AppLogger(),
     );
     await firstController.initialize();
     firstController.start();
@@ -257,6 +269,8 @@ void main() {
       homeWidgetService: HomeWidgetService(),
       hapticService: HapticService(),
       sessionHistoryRepository: SessionHistoryRepository(databaseB),
+      tasksRepository: TasksRepository(databaseB),
+      logger: const AppLogger(),
     );
     await restoredController.initialize();
 
@@ -272,5 +286,50 @@ void main() {
 
     restoredController.dispose();
     await databaseB.close();
+  });
+
+  test('focus start auto-creates and links task from intent text', () async {
+    SharedPreferences.setMockInitialValues({
+      'notifications_enabled': false,
+      'vibration_enabled': false,
+      'work_duration': 25,
+      'short_break_duration': 5,
+      'long_break_duration': 15,
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final tickDriver = FakeTickDriver();
+    final database = AppDatabase(NativeDatabase.memory());
+
+    final controller = SessionController(
+      preferences: prefs,
+      tickDriver: tickDriver,
+      notificationService: NotificationService(),
+      homeWidgetService: HomeWidgetService(),
+      hapticService: HapticService(),
+      sessionHistoryRepository: SessionHistoryRepository(database),
+      tasksRepository: TasksRepository(database),
+      logger: const AppLogger(),
+    );
+    await controller.initialize();
+
+    controller.setTask('Write architecture notes');
+    controller.start();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.state.currentTaskId, isNotNull);
+
+    for (var i = 0; i <= 1500; i++) {
+      tickDriver.tick();
+    }
+    await Future<void>.delayed(Duration.zero);
+
+    final rows = await database.select(database.tasksTable).get();
+    expect(rows, hasLength(1));
+    expect(rows.first.title, 'Write architecture notes');
+    expect(rows.first.completedPomodoros, greaterThanOrEqualTo(1));
+
+    controller.dispose();
+    await database.close();
   });
 }

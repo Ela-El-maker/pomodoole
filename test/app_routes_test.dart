@@ -14,10 +14,6 @@ void main() {
   test('legacy redirects are defined for migrated paths', () {
     expect(RoutePaths.legacyRedirects['/focus-screen'], RoutePaths.timer);
     expect(
-      RoutePaths.legacyRedirects['/task-management-screen'],
-      RoutePaths.tasks,
-    );
-    expect(
       RoutePaths.legacyRedirects['/active-focus-mode-screen'],
       RoutePaths.timer,
     );
