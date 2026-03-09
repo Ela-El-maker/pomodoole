@@ -37,6 +37,41 @@ class $TasksTableTable extends TasksTable
     requiredDuringInsert: false,
     defaultValue: const Constant(''),
   );
+  static const VerificationMeta _dueAtMeta = const VerificationMeta('dueAt');
+  @override
+  late final GeneratedColumn<DateTime> dueAt = GeneratedColumn<DateTime>(
+    'due_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderAtMeta = const VerificationMeta(
+    'reminderAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> reminderAt = GeneratedColumn<DateTime>(
+    'reminder_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _reminderEnabledMeta = const VerificationMeta(
+    'reminderEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> reminderEnabled = GeneratedColumn<bool>(
+    'reminder_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("reminder_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _estimatedPomodorosMeta =
       const VerificationMeta('estimatedPomodoros');
   @override
@@ -118,6 +153,9 @@ class $TasksTableTable extends TasksTable
     id,
     title,
     notes,
+    dueAt,
+    reminderAt,
+    reminderEnabled,
     estimatedPomodoros,
     completedPomodoros,
     isCompleted,
@@ -154,6 +192,27 @@ class $TasksTableTable extends TasksTable
       context.handle(
         _notesMeta,
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('due_at')) {
+      context.handle(
+        _dueAtMeta,
+        dueAt.isAcceptableOrUnknown(data['due_at']!, _dueAtMeta),
+      );
+    }
+    if (data.containsKey('reminder_at')) {
+      context.handle(
+        _reminderAtMeta,
+        reminderAt.isAcceptableOrUnknown(data['reminder_at']!, _reminderAtMeta),
+      );
+    }
+    if (data.containsKey('reminder_enabled')) {
+      context.handle(
+        _reminderEnabledMeta,
+        reminderEnabled.isAcceptableOrUnknown(
+          data['reminder_enabled']!,
+          _reminderEnabledMeta,
+        ),
       );
     }
     if (data.containsKey('estimated_pomodoros')) {
@@ -222,6 +281,18 @@ class $TasksTableTable extends TasksTable
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       )!,
+      dueAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}due_at'],
+      ),
+      reminderAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}reminder_at'],
+      ),
+      reminderEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reminder_enabled'],
+      )!,
       estimatedPomodoros: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}estimated_pomodoros'],
@@ -259,6 +330,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
   final String id;
   final String title;
   final String notes;
+  final DateTime? dueAt;
+  final DateTime? reminderAt;
+  final bool reminderEnabled;
   final int estimatedPomodoros;
   final int completedPomodoros;
   final bool isCompleted;
@@ -269,6 +343,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
     required this.id,
     required this.title,
     required this.notes,
+    this.dueAt,
+    this.reminderAt,
+    required this.reminderEnabled,
     required this.estimatedPomodoros,
     required this.completedPomodoros,
     required this.isCompleted,
@@ -282,6 +359,13 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['notes'] = Variable<String>(notes);
+    if (!nullToAbsent || dueAt != null) {
+      map['due_at'] = Variable<DateTime>(dueAt);
+    }
+    if (!nullToAbsent || reminderAt != null) {
+      map['reminder_at'] = Variable<DateTime>(reminderAt);
+    }
+    map['reminder_enabled'] = Variable<bool>(reminderEnabled);
     map['estimated_pomodoros'] = Variable<int>(estimatedPomodoros);
     map['completed_pomodoros'] = Variable<int>(completedPomodoros);
     map['is_completed'] = Variable<bool>(isCompleted);
@@ -296,6 +380,13 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
       id: Value(id),
       title: Value(title),
       notes: Value(notes),
+      dueAt: dueAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueAt),
+      reminderAt: reminderAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderAt),
+      reminderEnabled: Value(reminderEnabled),
       estimatedPomodoros: Value(estimatedPomodoros),
       completedPomodoros: Value(completedPomodoros),
       isCompleted: Value(isCompleted),
@@ -314,6 +405,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       notes: serializer.fromJson<String>(json['notes']),
+      dueAt: serializer.fromJson<DateTime?>(json['dueAt']),
+      reminderAt: serializer.fromJson<DateTime?>(json['reminderAt']),
+      reminderEnabled: serializer.fromJson<bool>(json['reminderEnabled']),
       estimatedPomodoros: serializer.fromJson<int>(json['estimatedPomodoros']),
       completedPomodoros: serializer.fromJson<int>(json['completedPomodoros']),
       isCompleted: serializer.fromJson<bool>(json['isCompleted']),
@@ -329,6 +423,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'notes': serializer.toJson<String>(notes),
+      'dueAt': serializer.toJson<DateTime?>(dueAt),
+      'reminderAt': serializer.toJson<DateTime?>(reminderAt),
+      'reminderEnabled': serializer.toJson<bool>(reminderEnabled),
       'estimatedPomodoros': serializer.toJson<int>(estimatedPomodoros),
       'completedPomodoros': serializer.toJson<int>(completedPomodoros),
       'isCompleted': serializer.toJson<bool>(isCompleted),
@@ -342,6 +439,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
     String? id,
     String? title,
     String? notes,
+    Value<DateTime?> dueAt = const Value.absent(),
+    Value<DateTime?> reminderAt = const Value.absent(),
+    bool? reminderEnabled,
     int? estimatedPomodoros,
     int? completedPomodoros,
     bool? isCompleted,
@@ -352,6 +452,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
     id: id ?? this.id,
     title: title ?? this.title,
     notes: notes ?? this.notes,
+    dueAt: dueAt.present ? dueAt.value : this.dueAt,
+    reminderAt: reminderAt.present ? reminderAt.value : this.reminderAt,
+    reminderEnabled: reminderEnabled ?? this.reminderEnabled,
     estimatedPomodoros: estimatedPomodoros ?? this.estimatedPomodoros,
     completedPomodoros: completedPomodoros ?? this.completedPomodoros,
     isCompleted: isCompleted ?? this.isCompleted,
@@ -364,6 +467,13 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       notes: data.notes.present ? data.notes.value : this.notes,
+      dueAt: data.dueAt.present ? data.dueAt.value : this.dueAt,
+      reminderAt: data.reminderAt.present
+          ? data.reminderAt.value
+          : this.reminderAt,
+      reminderEnabled: data.reminderEnabled.present
+          ? data.reminderEnabled.value
+          : this.reminderEnabled,
       estimatedPomodoros: data.estimatedPomodoros.present
           ? data.estimatedPomodoros.value
           : this.estimatedPomodoros,
@@ -385,6 +495,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('notes: $notes, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('reminderAt: $reminderAt, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
           ..write('estimatedPomodoros: $estimatedPomodoros, ')
           ..write('completedPomodoros: $completedPomodoros, ')
           ..write('isCompleted: $isCompleted, ')
@@ -400,6 +513,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
     id,
     title,
     notes,
+    dueAt,
+    reminderAt,
+    reminderEnabled,
     estimatedPomodoros,
     completedPomodoros,
     isCompleted,
@@ -414,6 +530,9 @@ class TasksTableData extends DataClass implements Insertable<TasksTableData> {
           other.id == this.id &&
           other.title == this.title &&
           other.notes == this.notes &&
+          other.dueAt == this.dueAt &&
+          other.reminderAt == this.reminderAt &&
+          other.reminderEnabled == this.reminderEnabled &&
           other.estimatedPomodoros == this.estimatedPomodoros &&
           other.completedPomodoros == this.completedPomodoros &&
           other.isCompleted == this.isCompleted &&
@@ -426,6 +545,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
   final Value<String> id;
   final Value<String> title;
   final Value<String> notes;
+  final Value<DateTime?> dueAt;
+  final Value<DateTime?> reminderAt;
+  final Value<bool> reminderEnabled;
   final Value<int> estimatedPomodoros;
   final Value<int> completedPomodoros;
   final Value<bool> isCompleted;
@@ -437,6 +559,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.notes = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.reminderAt = const Value.absent(),
+    this.reminderEnabled = const Value.absent(),
     this.estimatedPomodoros = const Value.absent(),
     this.completedPomodoros = const Value.absent(),
     this.isCompleted = const Value.absent(),
@@ -449,6 +574,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
     required String id,
     required String title,
     this.notes = const Value.absent(),
+    this.dueAt = const Value.absent(),
+    this.reminderAt = const Value.absent(),
+    this.reminderEnabled = const Value.absent(),
     this.estimatedPomodoros = const Value.absent(),
     this.completedPomodoros = const Value.absent(),
     this.isCompleted = const Value.absent(),
@@ -462,6 +590,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
     Expression<String>? id,
     Expression<String>? title,
     Expression<String>? notes,
+    Expression<DateTime>? dueAt,
+    Expression<DateTime>? reminderAt,
+    Expression<bool>? reminderEnabled,
     Expression<int>? estimatedPomodoros,
     Expression<int>? completedPomodoros,
     Expression<bool>? isCompleted,
@@ -474,6 +605,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (notes != null) 'notes': notes,
+      if (dueAt != null) 'due_at': dueAt,
+      if (reminderAt != null) 'reminder_at': reminderAt,
+      if (reminderEnabled != null) 'reminder_enabled': reminderEnabled,
       if (estimatedPomodoros != null) 'estimated_pomodoros': estimatedPomodoros,
       if (completedPomodoros != null) 'completed_pomodoros': completedPomodoros,
       if (isCompleted != null) 'is_completed': isCompleted,
@@ -488,6 +622,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
     Value<String>? id,
     Value<String>? title,
     Value<String>? notes,
+    Value<DateTime?>? dueAt,
+    Value<DateTime?>? reminderAt,
+    Value<bool>? reminderEnabled,
     Value<int>? estimatedPomodoros,
     Value<int>? completedPomodoros,
     Value<bool>? isCompleted,
@@ -500,6 +637,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
       id: id ?? this.id,
       title: title ?? this.title,
       notes: notes ?? this.notes,
+      dueAt: dueAt ?? this.dueAt,
+      reminderAt: reminderAt ?? this.reminderAt,
+      reminderEnabled: reminderEnabled ?? this.reminderEnabled,
       estimatedPomodoros: estimatedPomodoros ?? this.estimatedPomodoros,
       completedPomodoros: completedPomodoros ?? this.completedPomodoros,
       isCompleted: isCompleted ?? this.isCompleted,
@@ -521,6 +661,15 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
     }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
+    }
+    if (dueAt.present) {
+      map['due_at'] = Variable<DateTime>(dueAt.value);
+    }
+    if (reminderAt.present) {
+      map['reminder_at'] = Variable<DateTime>(reminderAt.value);
+    }
+    if (reminderEnabled.present) {
+      map['reminder_enabled'] = Variable<bool>(reminderEnabled.value);
     }
     if (estimatedPomodoros.present) {
       map['estimated_pomodoros'] = Variable<int>(estimatedPomodoros.value);
@@ -552,6 +701,9 @@ class TasksTableCompanion extends UpdateCompanion<TasksTableData> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('notes: $notes, ')
+          ..write('dueAt: $dueAt, ')
+          ..write('reminderAt: $reminderAt, ')
+          ..write('reminderEnabled: $reminderEnabled, ')
           ..write('estimatedPomodoros: $estimatedPomodoros, ')
           ..write('completedPomodoros: $completedPomodoros, ')
           ..write('isCompleted: $isCompleted, ')
@@ -593,6 +745,15 @@ class $SessionHistoryTableTable extends SessionHistoryTable
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<String> taskId = GeneratedColumn<String>(
+    'task_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _durationSecondsMeta = const VerificationMeta(
     'durationSeconds',
@@ -636,6 +797,7 @@ class $SessionHistoryTableTable extends SessionHistoryTable
   List<GeneratedColumn> get $columns => [
     id,
     sessionType,
+    taskId,
     durationSeconds,
     completed,
     createdAt,
@@ -665,6 +827,12 @@ class $SessionHistoryTableTable extends SessionHistoryTable
       );
     } else if (isInserting) {
       context.missing(_sessionTypeMeta);
+    }
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
     }
     if (data.containsKey('duration_seconds')) {
       context.handle(
@@ -709,6 +877,10 @@ class $SessionHistoryTableTable extends SessionHistoryTable
         DriftSqlType.string,
         data['${effectivePrefix}session_type'],
       )!,
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}task_id'],
+      ),
       durationSeconds: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}duration_seconds'],
@@ -734,12 +906,14 @@ class SessionHistoryTableData extends DataClass
     implements Insertable<SessionHistoryTableData> {
   final int id;
   final String sessionType;
+  final String? taskId;
   final int durationSeconds;
   final bool completed;
   final DateTime createdAt;
   const SessionHistoryTableData({
     required this.id,
     required this.sessionType,
+    this.taskId,
     required this.durationSeconds,
     required this.completed,
     required this.createdAt,
@@ -749,6 +923,9 @@ class SessionHistoryTableData extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['session_type'] = Variable<String>(sessionType);
+    if (!nullToAbsent || taskId != null) {
+      map['task_id'] = Variable<String>(taskId);
+    }
     map['duration_seconds'] = Variable<int>(durationSeconds);
     map['completed'] = Variable<bool>(completed);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -759,6 +936,9 @@ class SessionHistoryTableData extends DataClass
     return SessionHistoryTableCompanion(
       id: Value(id),
       sessionType: Value(sessionType),
+      taskId: taskId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(taskId),
       durationSeconds: Value(durationSeconds),
       completed: Value(completed),
       createdAt: Value(createdAt),
@@ -773,6 +953,7 @@ class SessionHistoryTableData extends DataClass
     return SessionHistoryTableData(
       id: serializer.fromJson<int>(json['id']),
       sessionType: serializer.fromJson<String>(json['sessionType']),
+      taskId: serializer.fromJson<String?>(json['taskId']),
       durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
       completed: serializer.fromJson<bool>(json['completed']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -784,6 +965,7 @@ class SessionHistoryTableData extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'sessionType': serializer.toJson<String>(sessionType),
+      'taskId': serializer.toJson<String?>(taskId),
       'durationSeconds': serializer.toJson<int>(durationSeconds),
       'completed': serializer.toJson<bool>(completed),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -793,12 +975,14 @@ class SessionHistoryTableData extends DataClass
   SessionHistoryTableData copyWith({
     int? id,
     String? sessionType,
+    Value<String?> taskId = const Value.absent(),
     int? durationSeconds,
     bool? completed,
     DateTime? createdAt,
   }) => SessionHistoryTableData(
     id: id ?? this.id,
     sessionType: sessionType ?? this.sessionType,
+    taskId: taskId.present ? taskId.value : this.taskId,
     durationSeconds: durationSeconds ?? this.durationSeconds,
     completed: completed ?? this.completed,
     createdAt: createdAt ?? this.createdAt,
@@ -809,6 +993,7 @@ class SessionHistoryTableData extends DataClass
       sessionType: data.sessionType.present
           ? data.sessionType.value
           : this.sessionType,
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
       durationSeconds: data.durationSeconds.present
           ? data.durationSeconds.value
           : this.durationSeconds,
@@ -822,6 +1007,7 @@ class SessionHistoryTableData extends DataClass
     return (StringBuffer('SessionHistoryTableData(')
           ..write('id: $id, ')
           ..write('sessionType: $sessionType, ')
+          ..write('taskId: $taskId, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('completed: $completed, ')
           ..write('createdAt: $createdAt')
@@ -830,14 +1016,21 @@ class SessionHistoryTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, sessionType, durationSeconds, completed, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    sessionType,
+    taskId,
+    durationSeconds,
+    completed,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SessionHistoryTableData &&
           other.id == this.id &&
           other.sessionType == this.sessionType &&
+          other.taskId == this.taskId &&
           other.durationSeconds == this.durationSeconds &&
           other.completed == this.completed &&
           other.createdAt == this.createdAt);
@@ -847,12 +1040,14 @@ class SessionHistoryTableCompanion
     extends UpdateCompanion<SessionHistoryTableData> {
   final Value<int> id;
   final Value<String> sessionType;
+  final Value<String?> taskId;
   final Value<int> durationSeconds;
   final Value<bool> completed;
   final Value<DateTime> createdAt;
   const SessionHistoryTableCompanion({
     this.id = const Value.absent(),
     this.sessionType = const Value.absent(),
+    this.taskId = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.completed = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -860,6 +1055,7 @@ class SessionHistoryTableCompanion
   SessionHistoryTableCompanion.insert({
     this.id = const Value.absent(),
     required String sessionType,
+    this.taskId = const Value.absent(),
     required int durationSeconds,
     this.completed = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -868,6 +1064,7 @@ class SessionHistoryTableCompanion
   static Insertable<SessionHistoryTableData> custom({
     Expression<int>? id,
     Expression<String>? sessionType,
+    Expression<String>? taskId,
     Expression<int>? durationSeconds,
     Expression<bool>? completed,
     Expression<DateTime>? createdAt,
@@ -875,6 +1072,7 @@ class SessionHistoryTableCompanion
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (sessionType != null) 'session_type': sessionType,
+      if (taskId != null) 'task_id': taskId,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (completed != null) 'completed': completed,
       if (createdAt != null) 'created_at': createdAt,
@@ -884,6 +1082,7 @@ class SessionHistoryTableCompanion
   SessionHistoryTableCompanion copyWith({
     Value<int>? id,
     Value<String>? sessionType,
+    Value<String?>? taskId,
     Value<int>? durationSeconds,
     Value<bool>? completed,
     Value<DateTime>? createdAt,
@@ -891,6 +1090,7 @@ class SessionHistoryTableCompanion
     return SessionHistoryTableCompanion(
       id: id ?? this.id,
       sessionType: sessionType ?? this.sessionType,
+      taskId: taskId ?? this.taskId,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       completed: completed ?? this.completed,
       createdAt: createdAt ?? this.createdAt,
@@ -905,6 +1105,9 @@ class SessionHistoryTableCompanion
     }
     if (sessionType.present) {
       map['session_type'] = Variable<String>(sessionType.value);
+    }
+    if (taskId.present) {
+      map['task_id'] = Variable<String>(taskId.value);
     }
     if (durationSeconds.present) {
       map['duration_seconds'] = Variable<int>(durationSeconds.value);
@@ -923,6 +1126,7 @@ class SessionHistoryTableCompanion
     return (StringBuffer('SessionHistoryTableCompanion(')
           ..write('id: $id, ')
           ..write('sessionType: $sessionType, ')
+          ..write('taskId: $taskId, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('completed: $completed, ')
           ..write('createdAt: $createdAt')
@@ -1751,6 +1955,1141 @@ class SoundMixesTableCompanion extends UpdateCompanion<SoundMixesTableData> {
   }
 }
 
+class $CatalogItemsTableTable extends CatalogItemsTable
+    with TableInfo<$CatalogItemsTableTable, CatalogItemsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CatalogItemsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emojiMeta = const VerificationMeta('emoji');
+  @override
+  late final GeneratedColumn<String> emoji = GeneratedColumn<String>(
+    'emoji',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _iconTokenMeta = const VerificationMeta(
+    'iconToken',
+  );
+  @override
+  late final GeneratedColumn<String> iconToken = GeneratedColumn<String>(
+    'icon_token',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    type,
+    value,
+    label,
+    description,
+    emoji,
+    iconToken,
+    sortOrder,
+    isActive,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'catalog_items_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CatalogItemsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_labelMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('emoji')) {
+      context.handle(
+        _emojiMeta,
+        emoji.isAcceptableOrUnknown(data['emoji']!, _emojiMeta),
+      );
+    }
+    if (data.containsKey('icon_token')) {
+      context.handle(
+        _iconTokenMeta,
+        iconToken.isAcceptableOrUnknown(data['icon_token']!, _iconTokenMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CatalogItemsTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CatalogItemsTableData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      emoji: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}emoji'],
+      ),
+      iconToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_token'],
+      ),
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+    );
+  }
+
+  @override
+  $CatalogItemsTableTable createAlias(String alias) {
+    return $CatalogItemsTableTable(attachedDatabase, alias);
+  }
+}
+
+class CatalogItemsTableData extends DataClass
+    implements Insertable<CatalogItemsTableData> {
+  final String id;
+  final String type;
+  final String value;
+  final String label;
+  final String? description;
+  final String? emoji;
+  final String? iconToken;
+  final int sortOrder;
+  final bool isActive;
+  const CatalogItemsTableData({
+    required this.id,
+    required this.type,
+    required this.value,
+    required this.label,
+    this.description,
+    this.emoji,
+    this.iconToken,
+    required this.sortOrder,
+    required this.isActive,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['type'] = Variable<String>(type);
+    map['value'] = Variable<String>(value);
+    map['label'] = Variable<String>(label);
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    if (!nullToAbsent || emoji != null) {
+      map['emoji'] = Variable<String>(emoji);
+    }
+    if (!nullToAbsent || iconToken != null) {
+      map['icon_token'] = Variable<String>(iconToken);
+    }
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_active'] = Variable<bool>(isActive);
+    return map;
+  }
+
+  CatalogItemsTableCompanion toCompanion(bool nullToAbsent) {
+    return CatalogItemsTableCompanion(
+      id: Value(id),
+      type: Value(type),
+      value: Value(value),
+      label: Value(label),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      emoji: emoji == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emoji),
+      iconToken: iconToken == null && nullToAbsent
+          ? const Value.absent()
+          : Value(iconToken),
+      sortOrder: Value(sortOrder),
+      isActive: Value(isActive),
+    );
+  }
+
+  factory CatalogItemsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CatalogItemsTableData(
+      id: serializer.fromJson<String>(json['id']),
+      type: serializer.fromJson<String>(json['type']),
+      value: serializer.fromJson<String>(json['value']),
+      label: serializer.fromJson<String>(json['label']),
+      description: serializer.fromJson<String?>(json['description']),
+      emoji: serializer.fromJson<String?>(json['emoji']),
+      iconToken: serializer.fromJson<String?>(json['iconToken']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'type': serializer.toJson<String>(type),
+      'value': serializer.toJson<String>(value),
+      'label': serializer.toJson<String>(label),
+      'description': serializer.toJson<String?>(description),
+      'emoji': serializer.toJson<String?>(emoji),
+      'iconToken': serializer.toJson<String?>(iconToken),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isActive': serializer.toJson<bool>(isActive),
+    };
+  }
+
+  CatalogItemsTableData copyWith({
+    String? id,
+    String? type,
+    String? value,
+    String? label,
+    Value<String?> description = const Value.absent(),
+    Value<String?> emoji = const Value.absent(),
+    Value<String?> iconToken = const Value.absent(),
+    int? sortOrder,
+    bool? isActive,
+  }) => CatalogItemsTableData(
+    id: id ?? this.id,
+    type: type ?? this.type,
+    value: value ?? this.value,
+    label: label ?? this.label,
+    description: description.present ? description.value : this.description,
+    emoji: emoji.present ? emoji.value : this.emoji,
+    iconToken: iconToken.present ? iconToken.value : this.iconToken,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isActive: isActive ?? this.isActive,
+  );
+  CatalogItemsTableData copyWithCompanion(CatalogItemsTableCompanion data) {
+    return CatalogItemsTableData(
+      id: data.id.present ? data.id.value : this.id,
+      type: data.type.present ? data.type.value : this.type,
+      value: data.value.present ? data.value.value : this.value,
+      label: data.label.present ? data.label.value : this.label,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      emoji: data.emoji.present ? data.emoji.value : this.emoji,
+      iconToken: data.iconToken.present ? data.iconToken.value : this.iconToken,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogItemsTableData(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('value: $value, ')
+          ..write('label: $label, ')
+          ..write('description: $description, ')
+          ..write('emoji: $emoji, ')
+          ..write('iconToken: $iconToken, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    type,
+    value,
+    label,
+    description,
+    emoji,
+    iconToken,
+    sortOrder,
+    isActive,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CatalogItemsTableData &&
+          other.id == this.id &&
+          other.type == this.type &&
+          other.value == this.value &&
+          other.label == this.label &&
+          other.description == this.description &&
+          other.emoji == this.emoji &&
+          other.iconToken == this.iconToken &&
+          other.sortOrder == this.sortOrder &&
+          other.isActive == this.isActive);
+}
+
+class CatalogItemsTableCompanion
+    extends UpdateCompanion<CatalogItemsTableData> {
+  final Value<String> id;
+  final Value<String> type;
+  final Value<String> value;
+  final Value<String> label;
+  final Value<String?> description;
+  final Value<String?> emoji;
+  final Value<String?> iconToken;
+  final Value<int> sortOrder;
+  final Value<bool> isActive;
+  final Value<int> rowid;
+  const CatalogItemsTableCompanion({
+    this.id = const Value.absent(),
+    this.type = const Value.absent(),
+    this.value = const Value.absent(),
+    this.label = const Value.absent(),
+    this.description = const Value.absent(),
+    this.emoji = const Value.absent(),
+    this.iconToken = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CatalogItemsTableCompanion.insert({
+    required String id,
+    required String type,
+    required String value,
+    required String label,
+    this.description = const Value.absent(),
+    this.emoji = const Value.absent(),
+    this.iconToken = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       type = Value(type),
+       value = Value(value),
+       label = Value(label);
+  static Insertable<CatalogItemsTableData> custom({
+    Expression<String>? id,
+    Expression<String>? type,
+    Expression<String>? value,
+    Expression<String>? label,
+    Expression<String>? description,
+    Expression<String>? emoji,
+    Expression<String>? iconToken,
+    Expression<int>? sortOrder,
+    Expression<bool>? isActive,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (type != null) 'type': type,
+      if (value != null) 'value': value,
+      if (label != null) 'label': label,
+      if (description != null) 'description': description,
+      if (emoji != null) 'emoji': emoji,
+      if (iconToken != null) 'icon_token': iconToken,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isActive != null) 'is_active': isActive,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CatalogItemsTableCompanion copyWith({
+    Value<String>? id,
+    Value<String>? type,
+    Value<String>? value,
+    Value<String>? label,
+    Value<String?>? description,
+    Value<String?>? emoji,
+    Value<String?>? iconToken,
+    Value<int>? sortOrder,
+    Value<bool>? isActive,
+    Value<int>? rowid,
+  }) {
+    return CatalogItemsTableCompanion(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      value: value ?? this.value,
+      label: label ?? this.label,
+      description: description ?? this.description,
+      emoji: emoji ?? this.emoji,
+      iconToken: iconToken ?? this.iconToken,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isActive: isActive ?? this.isActive,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (emoji.present) {
+      map['emoji'] = Variable<String>(emoji.value);
+    }
+    if (iconToken.present) {
+      map['icon_token'] = Variable<String>(iconToken.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CatalogItemsTableCompanion(')
+          ..write('id: $id, ')
+          ..write('type: $type, ')
+          ..write('value: $value, ')
+          ..write('label: $label, ')
+          ..write('description: $description, ')
+          ..write('emoji: $emoji, ')
+          ..write('iconToken: $iconToken, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AchievementDefinitionsTableTable extends AchievementDefinitionsTable
+    with
+        TableInfo<
+          $AchievementDefinitionsTableTable,
+          AchievementDefinitionsTableData
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AchievementDefinitionsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _metricMeta = const VerificationMeta('metric');
+  @override
+  late final GeneratedColumn<String> metric = GeneratedColumn<String>(
+    'metric',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thresholdMeta = const VerificationMeta(
+    'threshold',
+  );
+  @override
+  late final GeneratedColumn<int> threshold = GeneratedColumn<int>(
+    'threshold',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconTokenMeta = const VerificationMeta(
+    'iconToken',
+  );
+  @override
+  late final GeneratedColumn<String> iconToken = GeneratedColumn<String>(
+    'icon_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorHexMeta = const VerificationMeta(
+    'colorHex',
+  );
+  @override
+  late final GeneratedColumn<int> colorHex = GeneratedColumn<int>(
+    'color_hex',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    key,
+    title,
+    description,
+    metric,
+    threshold,
+    iconToken,
+    colorHex,
+    sortOrder,
+    isActive,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'achievement_definitions_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AchievementDefinitionsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_descriptionMeta);
+    }
+    if (data.containsKey('metric')) {
+      context.handle(
+        _metricMeta,
+        metric.isAcceptableOrUnknown(data['metric']!, _metricMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_metricMeta);
+    }
+    if (data.containsKey('threshold')) {
+      context.handle(
+        _thresholdMeta,
+        threshold.isAcceptableOrUnknown(data['threshold']!, _thresholdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_thresholdMeta);
+    }
+    if (data.containsKey('icon_token')) {
+      context.handle(
+        _iconTokenMeta,
+        iconToken.isAcceptableOrUnknown(data['icon_token']!, _iconTokenMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconTokenMeta);
+    }
+    if (data.containsKey('color_hex')) {
+      context.handle(
+        _colorHexMeta,
+        colorHex.isAcceptableOrUnknown(data['color_hex']!, _colorHexMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_colorHexMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  AchievementDefinitionsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AchievementDefinitionsTableData(
+      key: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}key'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      )!,
+      metric: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}metric'],
+      )!,
+      threshold: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}threshold'],
+      )!,
+      iconToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_token'],
+      )!,
+      colorHex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}color_hex'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+    );
+  }
+
+  @override
+  $AchievementDefinitionsTableTable createAlias(String alias) {
+    return $AchievementDefinitionsTableTable(attachedDatabase, alias);
+  }
+}
+
+class AchievementDefinitionsTableData extends DataClass
+    implements Insertable<AchievementDefinitionsTableData> {
+  final String key;
+  final String title;
+  final String description;
+  final String metric;
+  final int threshold;
+  final String iconToken;
+  final int colorHex;
+  final int sortOrder;
+  final bool isActive;
+  const AchievementDefinitionsTableData({
+    required this.key,
+    required this.title,
+    required this.description,
+    required this.metric,
+    required this.threshold,
+    required this.iconToken,
+    required this.colorHex,
+    required this.sortOrder,
+    required this.isActive,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['title'] = Variable<String>(title);
+    map['description'] = Variable<String>(description);
+    map['metric'] = Variable<String>(metric);
+    map['threshold'] = Variable<int>(threshold);
+    map['icon_token'] = Variable<String>(iconToken);
+    map['color_hex'] = Variable<int>(colorHex);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['is_active'] = Variable<bool>(isActive);
+    return map;
+  }
+
+  AchievementDefinitionsTableCompanion toCompanion(bool nullToAbsent) {
+    return AchievementDefinitionsTableCompanion(
+      key: Value(key),
+      title: Value(title),
+      description: Value(description),
+      metric: Value(metric),
+      threshold: Value(threshold),
+      iconToken: Value(iconToken),
+      colorHex: Value(colorHex),
+      sortOrder: Value(sortOrder),
+      isActive: Value(isActive),
+    );
+  }
+
+  factory AchievementDefinitionsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AchievementDefinitionsTableData(
+      key: serializer.fromJson<String>(json['key']),
+      title: serializer.fromJson<String>(json['title']),
+      description: serializer.fromJson<String>(json['description']),
+      metric: serializer.fromJson<String>(json['metric']),
+      threshold: serializer.fromJson<int>(json['threshold']),
+      iconToken: serializer.fromJson<String>(json['iconToken']),
+      colorHex: serializer.fromJson<int>(json['colorHex']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'title': serializer.toJson<String>(title),
+      'description': serializer.toJson<String>(description),
+      'metric': serializer.toJson<String>(metric),
+      'threshold': serializer.toJson<int>(threshold),
+      'iconToken': serializer.toJson<String>(iconToken),
+      'colorHex': serializer.toJson<int>(colorHex),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'isActive': serializer.toJson<bool>(isActive),
+    };
+  }
+
+  AchievementDefinitionsTableData copyWith({
+    String? key,
+    String? title,
+    String? description,
+    String? metric,
+    int? threshold,
+    String? iconToken,
+    int? colorHex,
+    int? sortOrder,
+    bool? isActive,
+  }) => AchievementDefinitionsTableData(
+    key: key ?? this.key,
+    title: title ?? this.title,
+    description: description ?? this.description,
+    metric: metric ?? this.metric,
+    threshold: threshold ?? this.threshold,
+    iconToken: iconToken ?? this.iconToken,
+    colorHex: colorHex ?? this.colorHex,
+    sortOrder: sortOrder ?? this.sortOrder,
+    isActive: isActive ?? this.isActive,
+  );
+  AchievementDefinitionsTableData copyWithCompanion(
+    AchievementDefinitionsTableCompanion data,
+  ) {
+    return AchievementDefinitionsTableData(
+      key: data.key.present ? data.key.value : this.key,
+      title: data.title.present ? data.title.value : this.title,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      metric: data.metric.present ? data.metric.value : this.metric,
+      threshold: data.threshold.present ? data.threshold.value : this.threshold,
+      iconToken: data.iconToken.present ? data.iconToken.value : this.iconToken,
+      colorHex: data.colorHex.present ? data.colorHex.value : this.colorHex,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AchievementDefinitionsTableData(')
+          ..write('key: $key, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('metric: $metric, ')
+          ..write('threshold: $threshold, ')
+          ..write('iconToken: $iconToken, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    key,
+    title,
+    description,
+    metric,
+    threshold,
+    iconToken,
+    colorHex,
+    sortOrder,
+    isActive,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AchievementDefinitionsTableData &&
+          other.key == this.key &&
+          other.title == this.title &&
+          other.description == this.description &&
+          other.metric == this.metric &&
+          other.threshold == this.threshold &&
+          other.iconToken == this.iconToken &&
+          other.colorHex == this.colorHex &&
+          other.sortOrder == this.sortOrder &&
+          other.isActive == this.isActive);
+}
+
+class AchievementDefinitionsTableCompanion
+    extends UpdateCompanion<AchievementDefinitionsTableData> {
+  final Value<String> key;
+  final Value<String> title;
+  final Value<String> description;
+  final Value<String> metric;
+  final Value<int> threshold;
+  final Value<String> iconToken;
+  final Value<int> colorHex;
+  final Value<int> sortOrder;
+  final Value<bool> isActive;
+  final Value<int> rowid;
+  const AchievementDefinitionsTableCompanion({
+    this.key = const Value.absent(),
+    this.title = const Value.absent(),
+    this.description = const Value.absent(),
+    this.metric = const Value.absent(),
+    this.threshold = const Value.absent(),
+    this.iconToken = const Value.absent(),
+    this.colorHex = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AchievementDefinitionsTableCompanion.insert({
+    required String key,
+    required String title,
+    required String description,
+    required String metric,
+    required int threshold,
+    required String iconToken,
+    required int colorHex,
+    this.sortOrder = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       title = Value(title),
+       description = Value(description),
+       metric = Value(metric),
+       threshold = Value(threshold),
+       iconToken = Value(iconToken),
+       colorHex = Value(colorHex);
+  static Insertable<AchievementDefinitionsTableData> custom({
+    Expression<String>? key,
+    Expression<String>? title,
+    Expression<String>? description,
+    Expression<String>? metric,
+    Expression<int>? threshold,
+    Expression<String>? iconToken,
+    Expression<int>? colorHex,
+    Expression<int>? sortOrder,
+    Expression<bool>? isActive,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (title != null) 'title': title,
+      if (description != null) 'description': description,
+      if (metric != null) 'metric': metric,
+      if (threshold != null) 'threshold': threshold,
+      if (iconToken != null) 'icon_token': iconToken,
+      if (colorHex != null) 'color_hex': colorHex,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (isActive != null) 'is_active': isActive,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AchievementDefinitionsTableCompanion copyWith({
+    Value<String>? key,
+    Value<String>? title,
+    Value<String>? description,
+    Value<String>? metric,
+    Value<int>? threshold,
+    Value<String>? iconToken,
+    Value<int>? colorHex,
+    Value<int>? sortOrder,
+    Value<bool>? isActive,
+    Value<int>? rowid,
+  }) {
+    return AchievementDefinitionsTableCompanion(
+      key: key ?? this.key,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      metric: metric ?? this.metric,
+      threshold: threshold ?? this.threshold,
+      iconToken: iconToken ?? this.iconToken,
+      colorHex: colorHex ?? this.colorHex,
+      sortOrder: sortOrder ?? this.sortOrder,
+      isActive: isActive ?? this.isActive,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (metric.present) {
+      map['metric'] = Variable<String>(metric.value);
+    }
+    if (threshold.present) {
+      map['threshold'] = Variable<int>(threshold.value);
+    }
+    if (iconToken.present) {
+      map['icon_token'] = Variable<String>(iconToken.value);
+    }
+    if (colorHex.present) {
+      map['color_hex'] = Variable<int>(colorHex.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AchievementDefinitionsTableCompanion(')
+          ..write('key: $key, ')
+          ..write('title: $title, ')
+          ..write('description: $description, ')
+          ..write('metric: $metric, ')
+          ..write('threshold: $threshold, ')
+          ..write('iconToken: $iconToken, ')
+          ..write('colorHex: $colorHex, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('isActive: $isActive, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1763,6 +3102,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SoundMixesTableTable soundMixesTable = $SoundMixesTableTable(
     this,
   );
+  late final $CatalogItemsTableTable catalogItemsTable =
+      $CatalogItemsTableTable(this);
+  late final $AchievementDefinitionsTableTable achievementDefinitionsTable =
+      $AchievementDefinitionsTableTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1772,6 +3115,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     sessionHistoryTable,
     reflectionsTable,
     soundMixesTable,
+    catalogItemsTable,
+    achievementDefinitionsTable,
   ];
 }
 
@@ -1780,6 +3125,9 @@ typedef $$TasksTableTableCreateCompanionBuilder =
       required String id,
       required String title,
       Value<String> notes,
+      Value<DateTime?> dueAt,
+      Value<DateTime?> reminderAt,
+      Value<bool> reminderEnabled,
       Value<int> estimatedPomodoros,
       Value<int> completedPomodoros,
       Value<bool> isCompleted,
@@ -1793,6 +3141,9 @@ typedef $$TasksTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> title,
       Value<String> notes,
+      Value<DateTime?> dueAt,
+      Value<DateTime?> reminderAt,
+      Value<bool> reminderEnabled,
       Value<int> estimatedPomodoros,
       Value<int> completedPomodoros,
       Value<bool> isCompleted,
@@ -1823,6 +3174,21 @@ class $$TasksTableTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get reminderAt => $composableBuilder(
+    column: $table.reminderAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1881,6 +3247,21 @@ class $$TasksTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get dueAt => $composableBuilder(
+    column: $table.dueAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get reminderAt => $composableBuilder(
+    column: $table.reminderAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get estimatedPomodoros => $composableBuilder(
     column: $table.estimatedPomodoros,
     builder: (column) => ColumnOrderings(column),
@@ -1929,6 +3310,19 @@ class $$TasksTableTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get dueAt =>
+      $composableBuilder(column: $table.dueAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get reminderAt => $composableBuilder(
+    column: $table.reminderAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get reminderEnabled => $composableBuilder(
+    column: $table.reminderEnabled,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get estimatedPomodoros => $composableBuilder(
     column: $table.estimatedPomodoros,
@@ -1989,6 +3383,9 @@ class $$TasksTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> notes = const Value.absent(),
+                Value<DateTime?> dueAt = const Value.absent(),
+                Value<DateTime?> reminderAt = const Value.absent(),
+                Value<bool> reminderEnabled = const Value.absent(),
                 Value<int> estimatedPomodoros = const Value.absent(),
                 Value<int> completedPomodoros = const Value.absent(),
                 Value<bool> isCompleted = const Value.absent(),
@@ -2000,6 +3397,9 @@ class $$TasksTableTableTableManager
                 id: id,
                 title: title,
                 notes: notes,
+                dueAt: dueAt,
+                reminderAt: reminderAt,
+                reminderEnabled: reminderEnabled,
                 estimatedPomodoros: estimatedPomodoros,
                 completedPomodoros: completedPomodoros,
                 isCompleted: isCompleted,
@@ -2013,6 +3413,9 @@ class $$TasksTableTableTableManager
                 required String id,
                 required String title,
                 Value<String> notes = const Value.absent(),
+                Value<DateTime?> dueAt = const Value.absent(),
+                Value<DateTime?> reminderAt = const Value.absent(),
+                Value<bool> reminderEnabled = const Value.absent(),
                 Value<int> estimatedPomodoros = const Value.absent(),
                 Value<int> completedPomodoros = const Value.absent(),
                 Value<bool> isCompleted = const Value.absent(),
@@ -2024,6 +3427,9 @@ class $$TasksTableTableTableManager
                 id: id,
                 title: title,
                 notes: notes,
+                dueAt: dueAt,
+                reminderAt: reminderAt,
+                reminderEnabled: reminderEnabled,
                 estimatedPomodoros: estimatedPomodoros,
                 completedPomodoros: completedPomodoros,
                 isCompleted: isCompleted,
@@ -2061,6 +3467,7 @@ typedef $$SessionHistoryTableTableCreateCompanionBuilder =
     SessionHistoryTableCompanion Function({
       Value<int> id,
       required String sessionType,
+      Value<String?> taskId,
       required int durationSeconds,
       Value<bool> completed,
       Value<DateTime> createdAt,
@@ -2069,6 +3476,7 @@ typedef $$SessionHistoryTableTableUpdateCompanionBuilder =
     SessionHistoryTableCompanion Function({
       Value<int> id,
       Value<String> sessionType,
+      Value<String?> taskId,
       Value<int> durationSeconds,
       Value<bool> completed,
       Value<DateTime> createdAt,
@@ -2090,6 +3498,11 @@ class $$SessionHistoryTableTableFilterComposer
 
   ColumnFilters<String> get sessionType => $composableBuilder(
     column: $table.sessionType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get taskId => $composableBuilder(
+    column: $table.taskId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2128,6 +3541,11 @@ class $$SessionHistoryTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get taskId => $composableBuilder(
+    column: $table.taskId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get durationSeconds => $composableBuilder(
     column: $table.durationSeconds,
     builder: (column) => ColumnOrderings(column),
@@ -2160,6 +3578,9 @@ class $$SessionHistoryTableTableAnnotationComposer
     column: $table.sessionType,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get taskId =>
+      $composableBuilder(column: $table.taskId, builder: (column) => column);
 
   GeneratedColumn<int> get durationSeconds => $composableBuilder(
     column: $table.durationSeconds,
@@ -2218,12 +3639,14 @@ class $$SessionHistoryTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> sessionType = const Value.absent(),
+                Value<String?> taskId = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
                 Value<bool> completed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SessionHistoryTableCompanion(
                 id: id,
                 sessionType: sessionType,
+                taskId: taskId,
                 durationSeconds: durationSeconds,
                 completed: completed,
                 createdAt: createdAt,
@@ -2232,12 +3655,14 @@ class $$SessionHistoryTableTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String sessionType,
+                Value<String?> taskId = const Value.absent(),
                 required int durationSeconds,
                 Value<bool> completed = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => SessionHistoryTableCompanion.insert(
                 id: id,
                 sessionType: sessionType,
+                taskId: taskId,
                 durationSeconds: durationSeconds,
                 completed: completed,
                 createdAt: createdAt,
@@ -2727,6 +4152,594 @@ typedef $$SoundMixesTableTableProcessedTableManager =
       SoundMixesTableData,
       PrefetchHooks Function()
     >;
+typedef $$CatalogItemsTableTableCreateCompanionBuilder =
+    CatalogItemsTableCompanion Function({
+      required String id,
+      required String type,
+      required String value,
+      required String label,
+      Value<String?> description,
+      Value<String?> emoji,
+      Value<String?> iconToken,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+typedef $$CatalogItemsTableTableUpdateCompanionBuilder =
+    CatalogItemsTableCompanion Function({
+      Value<String> id,
+      Value<String> type,
+      Value<String> value,
+      Value<String> label,
+      Value<String?> description,
+      Value<String?> emoji,
+      Value<String?> iconToken,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+
+class $$CatalogItemsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $CatalogItemsTableTable> {
+  $$CatalogItemsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconToken => $composableBuilder(
+    column: $table.iconToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CatalogItemsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $CatalogItemsTableTable> {
+  $$CatalogItemsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get emoji => $composableBuilder(
+    column: $table.emoji,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconToken => $composableBuilder(
+    column: $table.iconToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CatalogItemsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CatalogItemsTableTable> {
+  $$CatalogItemsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get emoji =>
+      $composableBuilder(column: $table.emoji, builder: (column) => column);
+
+  GeneratedColumn<String> get iconToken =>
+      $composableBuilder(column: $table.iconToken, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+}
+
+class $$CatalogItemsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CatalogItemsTableTable,
+          CatalogItemsTableData,
+          $$CatalogItemsTableTableFilterComposer,
+          $$CatalogItemsTableTableOrderingComposer,
+          $$CatalogItemsTableTableAnnotationComposer,
+          $$CatalogItemsTableTableCreateCompanionBuilder,
+          $$CatalogItemsTableTableUpdateCompanionBuilder,
+          (
+            CatalogItemsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $CatalogItemsTableTable,
+              CatalogItemsTableData
+            >,
+          ),
+          CatalogItemsTableData,
+          PrefetchHooks Function()
+        > {
+  $$CatalogItemsTableTableTableManager(
+    _$AppDatabase db,
+    $CatalogItemsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CatalogItemsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CatalogItemsTableTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CatalogItemsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
+                Value<String?> iconToken = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogItemsTableCompanion(
+                id: id,
+                type: type,
+                value: value,
+                label: label,
+                description: description,
+                emoji: emoji,
+                iconToken: iconToken,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String type,
+                required String value,
+                required String label,
+                Value<String?> description = const Value.absent(),
+                Value<String?> emoji = const Value.absent(),
+                Value<String?> iconToken = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CatalogItemsTableCompanion.insert(
+                id: id,
+                type: type,
+                value: value,
+                label: label,
+                description: description,
+                emoji: emoji,
+                iconToken: iconToken,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CatalogItemsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CatalogItemsTableTable,
+      CatalogItemsTableData,
+      $$CatalogItemsTableTableFilterComposer,
+      $$CatalogItemsTableTableOrderingComposer,
+      $$CatalogItemsTableTableAnnotationComposer,
+      $$CatalogItemsTableTableCreateCompanionBuilder,
+      $$CatalogItemsTableTableUpdateCompanionBuilder,
+      (
+        CatalogItemsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $CatalogItemsTableTable,
+          CatalogItemsTableData
+        >,
+      ),
+      CatalogItemsTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$AchievementDefinitionsTableTableCreateCompanionBuilder =
+    AchievementDefinitionsTableCompanion Function({
+      required String key,
+      required String title,
+      required String description,
+      required String metric,
+      required int threshold,
+      required String iconToken,
+      required int colorHex,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+typedef $$AchievementDefinitionsTableTableUpdateCompanionBuilder =
+    AchievementDefinitionsTableCompanion Function({
+      Value<String> key,
+      Value<String> title,
+      Value<String> description,
+      Value<String> metric,
+      Value<int> threshold,
+      Value<String> iconToken,
+      Value<int> colorHex,
+      Value<int> sortOrder,
+      Value<bool> isActive,
+      Value<int> rowid,
+    });
+
+class $$AchievementDefinitionsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AchievementDefinitionsTableTable> {
+  $$AchievementDefinitionsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get metric => $composableBuilder(
+    column: $table.metric,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get threshold => $composableBuilder(
+    column: $table.threshold,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconToken => $composableBuilder(
+    column: $table.iconToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AchievementDefinitionsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AchievementDefinitionsTableTable> {
+  $$AchievementDefinitionsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get metric => $composableBuilder(
+    column: $table.metric,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get threshold => $composableBuilder(
+    column: $table.threshold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconToken => $composableBuilder(
+    column: $table.iconToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get colorHex => $composableBuilder(
+    column: $table.colorHex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AchievementDefinitionsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AchievementDefinitionsTableTable> {
+  $$AchievementDefinitionsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get metric =>
+      $composableBuilder(column: $table.metric, builder: (column) => column);
+
+  GeneratedColumn<int> get threshold =>
+      $composableBuilder(column: $table.threshold, builder: (column) => column);
+
+  GeneratedColumn<String> get iconToken =>
+      $composableBuilder(column: $table.iconToken, builder: (column) => column);
+
+  GeneratedColumn<int> get colorHex =>
+      $composableBuilder(column: $table.colorHex, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+}
+
+class $$AchievementDefinitionsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AchievementDefinitionsTableTable,
+          AchievementDefinitionsTableData,
+          $$AchievementDefinitionsTableTableFilterComposer,
+          $$AchievementDefinitionsTableTableOrderingComposer,
+          $$AchievementDefinitionsTableTableAnnotationComposer,
+          $$AchievementDefinitionsTableTableCreateCompanionBuilder,
+          $$AchievementDefinitionsTableTableUpdateCompanionBuilder,
+          (
+            AchievementDefinitionsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $AchievementDefinitionsTableTable,
+              AchievementDefinitionsTableData
+            >,
+          ),
+          AchievementDefinitionsTableData,
+          PrefetchHooks Function()
+        > {
+  $$AchievementDefinitionsTableTableTableManager(
+    _$AppDatabase db,
+    $AchievementDefinitionsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AchievementDefinitionsTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AchievementDefinitionsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AchievementDefinitionsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> description = const Value.absent(),
+                Value<String> metric = const Value.absent(),
+                Value<int> threshold = const Value.absent(),
+                Value<String> iconToken = const Value.absent(),
+                Value<int> colorHex = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AchievementDefinitionsTableCompanion(
+                key: key,
+                title: title,
+                description: description,
+                metric: metric,
+                threshold: threshold,
+                iconToken: iconToken,
+                colorHex: colorHex,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String title,
+                required String description,
+                required String metric,
+                required int threshold,
+                required String iconToken,
+                required int colorHex,
+                Value<int> sortOrder = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AchievementDefinitionsTableCompanion.insert(
+                key: key,
+                title: title,
+                description: description,
+                metric: metric,
+                threshold: threshold,
+                iconToken: iconToken,
+                colorHex: colorHex,
+                sortOrder: sortOrder,
+                isActive: isActive,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AchievementDefinitionsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AchievementDefinitionsTableTable,
+      AchievementDefinitionsTableData,
+      $$AchievementDefinitionsTableTableFilterComposer,
+      $$AchievementDefinitionsTableTableOrderingComposer,
+      $$AchievementDefinitionsTableTableAnnotationComposer,
+      $$AchievementDefinitionsTableTableCreateCompanionBuilder,
+      $$AchievementDefinitionsTableTableUpdateCompanionBuilder,
+      (
+        AchievementDefinitionsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $AchievementDefinitionsTableTable,
+          AchievementDefinitionsTableData
+        >,
+      ),
+      AchievementDefinitionsTableData,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2739,4 +4752,12 @@ class $AppDatabaseManager {
       $$ReflectionsTableTableTableManager(_db, _db.reflectionsTable);
   $$SoundMixesTableTableTableManager get soundMixesTable =>
       $$SoundMixesTableTableTableManager(_db, _db.soundMixesTable);
+  $$CatalogItemsTableTableTableManager get catalogItemsTable =>
+      $$CatalogItemsTableTableTableManager(_db, _db.catalogItemsTable);
+  $$AchievementDefinitionsTableTableTableManager
+  get achievementDefinitionsTable =>
+      $$AchievementDefinitionsTableTableTableManager(
+        _db,
+        _db.achievementDefinitionsTable,
+      );
 }
