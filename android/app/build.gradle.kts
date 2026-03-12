@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.compile.JavaCompile
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -13,6 +15,26 @@ if (hasGoogleServices) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.firebase-perf")
     apply(plugin = "com.google.firebase.crashlytics")
+}
+
+val staleGeneratedPluginRegistrant = file("src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java")
+
+fun deleteStalePluginRegistrant() {
+    if (staleGeneratedPluginRegistrant.exists()) {
+        staleGeneratedPluginRegistrant.delete()
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    doFirst {
+        deleteStalePluginRegistrant()
+    }
+}
+
+tasks.matching { it.name == "assembleDebug" || it.name == "assembleRelease" }.configureEach {
+    doLast {
+        deleteStalePluginRegistrant()
+    }
 }
 
 android {

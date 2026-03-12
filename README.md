@@ -6,7 +6,6 @@
 ![GitHub contributors](https://img.shields.io/github/contributors/Ela-El-maker/pomodoole)
 ![GitHub issues](https://img.shields.io/github/issues/Ela-El-maker/pomodoole)
 
-
 ## Project Overview
 
 **Petal Focus** is a modern, distraction-free productivity app designed to help you maximize your focus and manage your work sessions effectively. Inspired by the Pomodoro Technique, Petal Focus lets you break your work into focused intervals, track your progress, and reflect on your productivity.
@@ -22,6 +21,17 @@
 - **Cross-Platform:** Runs on both Android and iOS, with a consistent, beautiful UI.
 
 Petal Focus is built for anyone who wants to work with intention, reduce distractions, and build better habits—whether you're a student, professional, or creative.
+
+## Screenshots
+
+<div align="center">
+	<img src="docs/screenshots/photo_1_2026-03-12_21-43-16.jpg" alt="Onboarding - Focus Duration" width="220" />
+	<img src="docs/screenshots/photo_2_2026-03-12_21-43-16.jpg" alt="Onboarding - Weekly Goal" width="220" />
+	<img src="docs/screenshots/photo_3_2026-03-12_21-43-16.jpg" alt="Onboarding - Ready" width="220" />
+	<img src="docs/screenshots/photo_4_2026-03-12_21-43-16.jpg" alt="Today's Tasks" width="220" />
+	<img src="docs/screenshots/photo_5_2026-03-12_21-43-16.jpg" alt="Statistics" width="220" />
+	<img src="docs/screenshots/photo_6_2026-03-12_21-43-16.jpg" alt="Settings" width="220" />
+</div>
 
 ## Architecture
 
@@ -41,6 +51,12 @@ Petal Focus is built for anyone who wants to work with intention, reduce distrac
 ```bash
 flutter pub get
 flutter analyze
+```
+
+Optional local secrets template:
+
+```bash
+cp env.example.json env.json
 ```
 
 ## Run The App
@@ -68,9 +84,25 @@ flutter test integration_test
 # Android debug APK
 flutter build apk --debug
 
+# Android release APK (recommended on this machine)
+cd android && ./gradlew assembleRelease
+
+# Android release build with full Gradle deprecation output
+cd android && ./gradlew assembleRelease --warning-mode all
+
 # iOS debug build (macOS only)
 flutter build ios --debug --no-codesign
+
+# iOS release validation (macOS only)
+flutter build ios --release --no-codesign
+flutter test integration_test -d ios
 ```
+
+## Release Notes
+
+- Android release builds on this machine should prefer `cd android && ./gradlew assembleRelease`.
+- `flutter build apk --release` can intermittently hit a local Flutter file-watcher issue (`Already watching path`), while direct Gradle release builds complete successfully.
+- To audit Gradle deprecations before upgrading toolchains, run `./gradlew assembleRelease --warning-mode all`.
 
 ## CI
 
@@ -81,6 +113,12 @@ GitHub Actions pipeline (`.github/workflows/ci.yml`) runs:
 - strict analyze (`--fatal-infos --fatal-warnings`)
 - unit/widget tests
 - integration smoke tests
+
+Additional security pipeline:
+
+- `.github/workflows/secrets-scan.yml` runs gitleaks on push/PR.
+
+If a key is ever exposed, follow [docs/security-key-incident-response.md](docs/security-key-incident-response.md).
 
 ## App IDs / Bundle IDs
 

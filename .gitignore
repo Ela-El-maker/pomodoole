@@ -45,5 +45,18 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/build/
 android/app/.cxx
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 docs/
+
+# Local secrets / credentials
+env.json
+env.local.json
+env.*.local.json
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+*.mobileprovision
